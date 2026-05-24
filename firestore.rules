@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Default catch-all deny rule for any other collection pathways
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Allow unauthenticated gets for username login verification
+      allow get: if isValidId(userId);
+      
+      // Allow unauthenticated list for user directory
+      allow list: if true;
+
+      // Allow registration and profile updates
+      allow create, update: if isValidId(userId)
+        && request.resource.data.username is string
+        && request.resource.data.username.size() >= 1
+        && request.resource.data.username.size() <= 50;
+
+      allow delete: if isValidId(userId);
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      // Allow project query gets
+      allow get: if isValidId(projectId);
+
+      // Allow listing projects under this collection
+      allow list: if true;
+
+      // Allow creating and editing projects
+      allow create, update: if isValidId(projectId)
+        && request.resource.data.projectName is string
+        && request.resource.data.projectName.size() >= 1
+        && request.resource.data.projectName.size() <= 200;
+
+      // Allow project deletions
+      allow delete: if isValidId(projectId);
+    }
+  }
+}
+

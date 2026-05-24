@@ -1,0 +1,6 @@
+{
+  "name": "Rene Turos Production Portal",
+  "description": "Book production management system for Rene Turos Group, streamlining workflows from project inception to printed book copies and final frame trophies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

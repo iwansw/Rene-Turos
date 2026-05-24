@@ -1,0 +1,110 @@
+{
+  "entities": {
+    "UserRegistry": {
+      "title": "UserRegistry",
+      "description": "Internal login profile registered and managed by an administrator account.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase authenticated User ID."
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique login moniker assigned to the operator."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The human readable name or handle of this member."
+        },
+        "role": {
+          "type": "string",
+          "description": "Security roles, such as 'admin' or 'user'."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO format string of registration time."
+        }
+      },
+      "required": ["uid", "username", "displayName", "role", "createdAt"]
+    },
+    "BookProject": {
+      "title": "BookProject",
+      "description": "Represents a full multi-stage book publishing project track on behalf of a specific creator.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique document identification string."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The Firebase User UID of the project owner."
+        },
+        "projectName": {
+          "type": "string",
+          "description": "The title or working name of the book project."
+        },
+        "currentPhaseIndex": {
+          "type": "integer",
+          "description": "Index representing the current phase, from 0 to 9."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The date or ISO string when the project was logged."
+        },
+        "clientContact": {
+          "type": "object",
+          "description": "Detailed client contact card information."
+        },
+        "prospect": {
+          "type": "object",
+          "description": "Prospecting and initial visit evaluation status details."
+        },
+        "requirementBrief": {
+          "type": "object",
+          "description": "Core customer specification briefs."
+        },
+        "creativeBrief": {
+          "type": "object",
+          "description": "Art design proposals and feedback loop results."
+        },
+        "proposal": {
+          "type": "object",
+          "description": "Service itemized offerings and budget cost calculations."
+        },
+        "closing": {
+          "type": "object",
+          "description": "Closing terms, finalized finances and electro-signature status."
+        },
+        "preProduction": {
+          "type": "object",
+          "description": "Outline chapters, team assignments, and schedules."
+        },
+        "production": {
+          "type": "object",
+          "description": "Progress tracking across literary drafting steps and cover issues."
+        },
+        "printing": {
+          "type": "object",
+          "description": "Print verification steps, shipments, and quantities."
+        },
+        "finalArtwork": {
+          "type": "object",
+          "description": "Softcopy delivery and award trophy parameters."
+        }
+      },
+      "required": ["id", "ownerId", "projectName", "currentPhaseIndex", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "UserRegistry",
+      "description": "Secure collection of custom login profiles registered and managed by an administrator account."
+    },
+    "projects/{projectId}": {
+      "schema": "BookProject",
+      "description": "Secure collection of custom projects tracked per user."
+    }
+  }
+}
