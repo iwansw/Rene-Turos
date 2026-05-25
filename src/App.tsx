@@ -162,8 +162,17 @@ export default function App() {
         });
         list.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
         setUsersList(list);
+        localStorage.setItem('ReneTuros_LocalUsers', JSON.stringify(list));
       }, (err) => {
         console.warn("Could not load teammate directory list from Firestore:", err);
+        const savedUsers = localStorage.getItem('ReneTuros_LocalUsers');
+        if (savedUsers) {
+          try {
+            setUsersList(JSON.parse(savedUsers));
+          } catch (e) {
+            console.error(e);
+          }
+        }
       });
     }
 
@@ -184,6 +193,7 @@ export default function App() {
         await seedInitialProjects(userProfile.uid);
       } else {
         setProjects(loaded);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(loaded));
         setSelectedProjectId((prev) => {
           if (prev && loaded.some(p => p.id === prev)) return prev;
           return loaded.length > 0 ? loaded[0].id : '';
@@ -192,6 +202,29 @@ export default function App() {
     }, (err) => {
       console.warn("Could not load project tracks from Firestore, setting offline flag:", err);
       setFirestoreOffline(true);
+      
+      const savedProjects = localStorage.getItem('ReneTuros_Offline_Projects');
+      if (savedProjects) {
+        try {
+          const parsed = JSON.parse(savedProjects);
+          setProjects(parsed);
+          setSelectedProjectId((prev) => {
+            if (prev && parsed.some((p: any) => p.id === prev)) return prev;
+            return parsed.length > 0 ? parsed[0].id : '';
+          });
+        } catch (e) {
+          console.error("Error reading offline projects:", e);
+        }
+      } else {
+        const defaultProj = INITIAL_PROJECTS.map(p => ({
+          ...p,
+          id: `proj-${p.id.split('-')[1]}-offline`,
+          ownerId: userProfile?.uid || 'usr_offline'
+        }));
+        setProjects(defaultProj);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(defaultProj));
+        setSelectedProjectId(defaultProj.length > 0 ? defaultProj[0].id : '');
+      }
     });
 
     return () => {
@@ -302,14 +335,14 @@ export default function App() {
   const handleResetData = async () => {
     if (!user) return;
     if (window.confirm("Are you sure you want to reset all records back to René Turos presets? All existing project records will be replaced.")) {
-      if (isSandbox) {
+      if (isSandbox || firestoreOffline) {
         const defaultProj = INITIAL_PROJECTS.map(p => ({
           ...p,
-          id: `proj-${p.id.split('-')[1]}-sbox`,
+          id: `proj-${p.id.split('-')[1]}-offline`,
           ownerId: user.uid
         }));
         setProjects(defaultProj);
-        localStorage.setItem('ReneTuros_Sandbox_Projects', JSON.stringify(defaultProj));
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(defaultProj));
         setSelectedProjectId(defaultProj.length > 0 ? defaultProj[0].id : '');
         setViewingPhaseIndex(0);
         return;
@@ -321,7 +354,17 @@ export default function App() {
         }
         await seedInitialProjects(user.uid);
       } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, 'projects/reset');
+        console.warn("Could not reset online data, falling back to local reset:", err);
+        setFirestoreOffline(true);
+        const defaultProj = INITIAL_PROJECTS.map(p => ({
+          ...p,
+          id: `proj-${p.id.split('-')[1]}-offline`,
+          ownerId: user.uid
+        }));
+        setProjects(defaultProj);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(defaultProj));
+        setSelectedProjectId(defaultProj.length > 0 ? defaultProj[0].id : '');
+        setViewingPhaseIndex(0);
       }
     }
   };
@@ -338,11 +381,27 @@ export default function App() {
 
   // Save changes back of the single active document straight to Firestore
   const handleUpdateActiveProject = async (updated: BookProject) => {
+    if (firestoreOffline) {
+      setProjects(prev => {
+        const next = prev.map(p => p.id === updated.id ? updated : p);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
+
     try {
       const cleaned = cleanUndefinedValues(updated);
       await setDoc(doc(db, 'projects', cleaned.id), cleaned);
+      localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(projects.map(p => p.id === updated.id ? updated : p)));
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `projects/${updated.id}`);
+      console.warn("Firestore update failed, falling back to local offline storage update:", err);
+      setFirestoreOffline(true);
+      setProjects(prev => {
+        const next = prev.map(p => p.id === updated.id ? updated : p);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+        return next;
+      });
     }
   };
 
@@ -458,6 +517,24 @@ export default function App() {
       }
     };
 
+    if (firestoreOffline) {
+      setProjects(prev => {
+        const next = [newProject, ...prev];
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+        return next;
+      });
+      setSelectedProjectId(pid);
+      setViewingPhaseIndex(0);
+
+      // Reset Form Input Toggles
+      setNewProjectName('');
+      setNewClientName('');
+      setNewClientPhone('');
+      setNewClientEmail('');
+      setShowCreateForm(false);
+      return;
+    }
+
     try {
       const cleaned = cleanUndefinedValues(newProject);
       await setDoc(doc(db, 'projects', pid), cleaned);
@@ -471,17 +548,60 @@ export default function App() {
       setNewClientEmail('');
       setShowCreateForm(false);
     } catch (err) {
-      handleFirestoreError(err, OperationType.WRITE, `projects/${pid}`);
+      console.warn("Could not create project online, writing to local storage:", err);
+      setFirestoreOffline(true);
+      setProjects(prev => {
+        const next = [newProject, ...prev];
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+        return next;
+      });
+      setSelectedProjectId(pid);
+      setViewingPhaseIndex(0);
+
+      // Reset Form Input Toggles
+      setNewProjectName('');
+      setNewClientName('');
+      setNewClientPhone('');
+      setNewClientEmail('');
+      setShowCreateForm(false);
     }
   };
 
   // Remove a project
   const handleDeleteProject = async (pId: string) => {
     if (window.confirm("Are you sure you want to permanently delete this book project from the database? This is irreversible.")) {
+      if (firestoreOffline) {
+        setProjects(prev => {
+          const next = prev.filter(p => p.id !== pId);
+          localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+          return next;
+        });
+        setSelectedProjectId((prevId) => {
+          if (prevId === pId) {
+            const remaining = projects.filter(p => p.id !== pId);
+            return remaining.length > 0 ? remaining[0].id : '';
+          }
+          return prevId;
+        });
+        return;
+      }
       try {
         await deleteDoc(doc(db, 'projects', pId));
       } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `projects/${pId}`);
+        console.warn("Could not delete project online, updating local storage:", err);
+        setFirestoreOffline(true);
+        setProjects(prev => {
+          const next = prev.filter(p => p.id !== pId);
+          localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+          return next;
+        });
+        setSelectedProjectId((prevId) => {
+          if (prevId === pId) {
+            const remaining = projects.filter(p => p.id !== pId);
+            return remaining.length > 0 ? remaining[0].id : '';
+          }
+          return prevId;
+        });
       }
     }
   };

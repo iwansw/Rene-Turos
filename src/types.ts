@@ -128,6 +128,7 @@ export interface ProposalDetails {
   additionalTerms: string;
   dateSent: string;
   status: ProposalStatus;
+  documents?: BriefDocument[];
 }
 
 export interface ClosingDetails {
@@ -136,6 +137,8 @@ export interface ClosingDetails {
   contractDraftText: string;
   signedDate: string;
   signingRepresentative: string;
+  contractDraftDocuments?: BriefDocument[];
+  signedContractDocuments?: BriefDocument[];
 }
 
 export interface TeamAssignment {

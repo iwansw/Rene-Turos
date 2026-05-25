@@ -84,12 +84,18 @@ export default function PhaseDetailForm({
   const [showClearMOMConfirm, setShowClearMOMConfirm] = useState(false);
   const [confirmDeleteBriefDocIndex, setConfirmDeleteBriefDocIndex] = useState<number | null>(null);
   const [confirmDeleteConceptDocIndex, setConfirmDeleteConceptDocIndex] = useState<number | null>(null);
+  const [confirmDeleteProposalDocIndex, setConfirmDeleteProposalDocIndex] = useState<number | null>(null);
+  const [confirmDeleteContractDraftDocIndex, setConfirmDeleteContractDraftDocIndex] = useState<number | null>(null);
+  const [confirmDeleteSignedContractDocIndex, setConfirmDeleteSignedContractDocIndex] = useState<number | null>(null);
 
   // Reset confirmation state when the project or phase is changed
   useEffect(() => {
     setShowClearMOMConfirm(false);
     setConfirmDeleteBriefDocIndex(null);
     setConfirmDeleteConceptDocIndex(null);
+    setConfirmDeleteProposalDocIndex(null);
+    setConfirmDeleteContractDraftDocIndex(null);
+    setConfirmDeleteSignedContractDocIndex(null);
     setNewFeedbackLog('');
   }, [project.id, viewingPhaseIndex]);
 
@@ -220,6 +226,129 @@ export default function PhaseDetailForm({
           draft.creativeBrief.creativeConceptDocuments = [];
         }
         draft.creativeBrief.creativeConceptDocuments.push({
+          name: file.name,
+          data: reader.result as string,
+          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+          uploadedAt: new Date().toISOString()
+        });
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // File upload logic for proposal documents
+  const handleProposalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      readProposalFile(files[i]);
+    }
+  };
+
+  const handleProposalDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleProposalDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        readProposalFile(files[i]);
+      }
+    }
+  };
+
+  const readProposalFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateProject(draft => {
+        if (!draft.proposal.documents) {
+          draft.proposal.documents = [];
+        }
+        draft.proposal.documents.push({
+          name: file.name,
+          data: reader.result as string,
+          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+          uploadedAt: new Date().toISOString()
+        });
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // File upload logic for contract draft documents
+  const handleContractDraftFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      readContractDraftFile(files[i]);
+    }
+  };
+
+  const handleContractDraftDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleContractDraftDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        readContractDraftFile(files[i]);
+      }
+    }
+  };
+
+  const readContractDraftFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateProject(draft => {
+        if (!draft.closing.contractDraftDocuments) {
+          draft.closing.contractDraftDocuments = [];
+        }
+        draft.closing.contractDraftDocuments.push({
+          name: file.name,
+          data: reader.result as string,
+          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+          uploadedAt: new Date().toISOString()
+        });
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // File upload logic for signed final contract documents
+  const handleSignedContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      readSignedContractFile(files[i]);
+    }
+  };
+
+  const handleSignedContractDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleSignedContractDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        readSignedContractFile(files[i]);
+      }
+    }
+  };
+
+  const readSignedContractFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateProject(draft => {
+        if (!draft.closing.signedContractDocuments) {
+          draft.closing.signedContractDocuments = [];
+        }
+        draft.closing.signedContractDocuments.push({
           name: file.name,
           data: reader.result as string,
           uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
@@ -1522,15 +1651,16 @@ export default function PhaseDetailForm({
                       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         <span className="text-xs text-slate-400">Rp</span>
                         <input
-                          type="number"
-                          value={offering.cost}
+                          type="text"
+                          value={(offering.cost || 0).toLocaleString('id-ID')}
                           onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
+                            const raw = e.target.value;
+                            const val = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
                             updateProject(draft => {
                               draft.proposal.offerings[idx].cost = val;
                             });
                           }}
-                          className="w-28 text-right bg-white border border-slate-200 rounded-sm py-0.5 px-1 text-xs font-bold text-slate-700 focus:outline-none"
+                          className="w-28 text-right bg-white border border-slate-200 rounded-sm py-0.5 px-1 text-xs font-bold text-slate-700 focus:outline-none focus:border-slate-400"
                         />
                       </div>
                     </div>
@@ -1576,11 +1706,15 @@ export default function PhaseDetailForm({
                 />
                 <div className="flex gap-2">
                   <input
-                    type="number"
+                    type="text"
                     placeholder="Cost (Rp)"
-                    value={newServiceCost}
-                    onChange={e => setNewServiceCost(e.target.value)}
-                    className="text-xs bg-white border rounded px-2 py-1.5 w-full"
+                    value={newServiceCost ? (parseInt(newServiceCost, 10) || 0).toLocaleString('id-ID') : ''}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      const numeric = raw.replace(/[^\d]/g, '');
+                      setNewServiceCost(numeric);
+                    }}
+                    className="text-xs bg-white border rounded px-2 py-1.5 w-full font-bold"
                   />
                   <button
                     type="button"
@@ -1647,6 +1781,136 @@ export default function PhaseDetailForm({
               </div>
             </div>
 
+            {/* Proposal Documents Section */}
+            <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+              <div>
+                <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText size={13} className="text-slate-500" />
+                  Proposal Document(s)
+                </h5>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Upload official quotation proposals, breakdown spreadsheets, or signed estimate files.
+                </p>
+              </div>
+
+              {/* Upload Drop Zone */}
+              <div
+                id="proposal-doc-drop-area"
+                onDragOver={handleProposalDragOver}
+                onDrop={handleProposalDrop}
+                onClick={() => document.getElementById('proposal-doc-picker')?.click()}
+                className="border-2 border-dashed border-slate-200 hover:border-slate-800 bg-white hover:bg-slate-50/50 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
+              >
+                <input
+                  type="file"
+                  id="proposal-doc-picker"
+                  className="hidden"
+                  onChange={handleProposalFileChange}
+                  multiple
+                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx"
+                />
+                <div className="flex justify-center text-slate-400 group-hover:text-slate-800 transition-colors">
+                  <FileText size={24} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-slate-755">
+                    Drag & drop or <span className="text-slate-900 underline cursor-pointer">choose file(s)</span> to upload
+                  </p>
+                  <p className="text-[10px] text-slate-400">
+                    Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
+                  </p>
+                </div>
+              </div>
+
+              {/* Uploaded Documents List */}
+              {project.proposal.documents && project.proposal.documents.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                  {project.proposal.documents.map((doc, idx) => (
+                    <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-2.5 truncate">
+                        <div className="p-2 bg-slate-100 rounded-lg text-slate-600 font-bold shrink-0">
+                          <FileText size={16} />
+                        </div>
+                        <div className="truncate text-left">
+                          <p className="text-xs font-bold text-slate-850 truncate" title={doc.name}>
+                            {doc.name}
+                          </p>
+                          <p className="text-[9px] text-slate-400">
+                            {doc.uploadedBy ? (
+                              <span>
+                                By <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
+                                {doc.uploadedAt && (
+                                  <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
+                                    on {new Date(doc.uploadedAt).toLocaleString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              "Seeded Document"
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {confirmDeleteProposalDocIndex === idx ? (
+                          <div className="flex items-center gap-1 bg-red-50 border border-red-100 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-150">
+                            <span className="text-[9px] font-bold text-red-700 px-1">Are you sure?</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateProject(draft => {
+                                  if (draft.proposal.documents) {
+                                    draft.proposal.documents.splice(idx, 1);
+                                  }
+                                });
+                                setConfirmDeleteProposalDocIndex(null);
+                              }}
+                              className="px-2 py-0.5 text-[8px] font-black text-white bg-red-600 hover:bg-red-700 rounded transition-all shadow-xs shrink-0 cursor-pointer"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteProposalDocIndex(null)}
+                              className="px-2 py-0.5 text-[8px] font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-all shrink-0 cursor-pointer"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {doc.data && (
+                              <a
+                                href={doc.data}
+                                download={doc.name}
+                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                              >
+                                Download
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteProposalDocIndex(idx)}
+                              className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
+                              title="Delete this document"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -1654,153 +1918,424 @@ export default function PhaseDetailForm({
         {/* PHASE 6: CLOSING */}
         {/* ======================================= */}
         {viewingPhaseIndex === 5 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Left Info and Interactive sign status */}
-            <div className="space-y-4 flex flex-col justify-between">
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">Finalized Project Budget Negotiated</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs">Rp</span>
-                  <input
-                    type="number"
-                    value={project.closing.finalAmount}
-                    onChange={(e) => updateProject(draft => { draft.closing.finalAmount = parseFloat(e.target.value) || 0; })}
-                    className="w-full text-base font-bold bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-3 py-1.5 text-slate-800"
-                    placeholder="Final contractual amount"
-                  />
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Left Info and Interactive sign status */}
+              <div className="space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">Finalized Project Budget Negotiated</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs">Rp</span>
+                    <input
+                      type="text"
+                      value={project.closing.finalAmount ? project.closing.finalAmount.toLocaleString('id-ID') : '0'}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const val = parseInt(raw.replace(/[^\d]/g, ''), 10) || 0;
+                        updateProject(draft => { draft.closing.finalAmount = val; });
+                      }}
+                      className="w-full text-base font-bold bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-3 py-1.5 text-slate-800 focus:bg-white outline-none transition-all"
+                      placeholder="Final contractual amount"
+                    />
+                  </div>
+
+                  <div className="pt-2">
+                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">CONTRACT DRAFT & SIGNATURE SPECIFICATIONS</label>
+                    <textarea
+                      rows={4}
+                      value={project.closing.contractDraftText}
+                      onChange={(e) => updateProject(draft => { draft.closing.contractDraftText = e.target.value; })}
+                      className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-700 resize-none"
+                      placeholder="Incorporate main boilerplate text, payment terms, delivery targets..."
+                    />
+                  </div>
                 </div>
 
-                <div className="pt-2">
-                  <label className="text-[10px] font-extrabold text-slate-400 block mb-1">CONTRACT DRAFT & SIGNATURE SPECIFICATIONS</label>
-                  <textarea
-                    rows={4}
-                    value={project.closing.contractDraftText}
-                    onChange={(e) => updateProject(draft => { draft.closing.contractDraftText = e.target.value; })}
-                    className="w-full text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-700 resize-none"
-                    placeholder="Incorporate main boilerplate text, payment terms, delivery targets..."
-                  />
+                {/* Contracting block */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                  <span className="text-[10px] font-extrabold text-slate-400 tracking-wider block uppercase">Authorized Representative Sign-off</span>
+                  
+                  {project.closing.contractStatus === ContractStatus.SIGNED ? (
+                    <div className="flex items-center gap-3 bg-emerald-100 border border-emerald-300 rounded-xl p-3.5 text-emerald-800">
+                      <ShieldCheck size={28} className="text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="text-xs font-extrabold block">CONTRACT SIGNED & LOCKED</span>
+                        <span className="text-[10px] block mt-0.5 font-mono text-emerald-700">
+                          Signed by {project.closing.signingRepresentative || 'Arthur Green'} on {formatDate(project.closing.signedDate || '2026-05-22')}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        className="text-xs w-full bg-white border rounded px-3 py-2"
+                        placeholder="Type Representative Name (e.g. Arthur Green)"
+                        value={newTimelineOwner}
+                        onChange={e => setNewTimelineOwner(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newTimelineOwner.trim()) return alert('Please enter signing representative name first');
+                          updateProject(draft => {
+                            draft.closing.contractStatus = ContractStatus.SIGNED;
+                            draft.closing.signingRepresentative = newTimelineOwner;
+                            draft.closing.signedDate = new Date().toISOString().split('T')[0];
+                            // Proactively suggest chapters outline if empty
+                            if (draft.preProduction.outlineChapters.length === 0) {
+                              draft.preProduction.outlineChapters = [
+                                'Chapter 1: Introduction and Scope',
+                                'Chapter 2: Essential Context',
+                                'Chapter 3: Core Methodology',
+                                'Chapter 4: Crucial Observations',
+                                'Chapter 5: Closing Summaries'
+                              ];
+                            }
+                          });
+                          setNewTimelineOwner('');
+                        }}
+                        className="bg-slate-900 hover:bg-slate-850 text-white font-bold text-xs py-2 px-4 rounded w-full flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <PenTool size={13} />
+                        Execute Electro-Signature
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex bg-white p-1 rounded border border-slate-250 justify-between items-center text-[10px] text-slate-500">
+                    <span className="font-semibold px-2">Contract Status Flow:</span>
+                    <div className="flex gap-1.5">
+                      {([ContractStatus.DRAFT, ContractStatus.SENT, ContractStatus.SIGNED] as const).map(c => (
+                        <span 
+                          key={c}
+                          onClick={() => updateProject(draft => { draft.closing.contractStatus = c; })}
+                          className={`px-1.5 py-0.5 rounded cursor-pointer ${
+                            project.closing.contractStatus === c 
+                              ? 'bg-slate-900 text-white font-bold' 
+                              : 'text-slate-400'
+                          }`}
+                        >
+                          {c.toUpperCase()}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Contracting block */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                <span className="text-[10px] font-extrabold text-slate-400 tracking-wider block uppercase">Authorized Representative Sign-off</span>
-                
-                {project.closing.contractStatus === ContractStatus.SIGNED ? (
-                  <div className="flex items-center gap-3 bg-emerald-100 border border-emerald-300 rounded-xl p-3.5 text-emerald-800">
-                    <ShieldCheck size={28} className="text-emerald-600 shrink-0" />
-                    <div>
-                      <span className="text-xs font-extrabold block">CONTRACT SIGNED & LOCKED</span>
-                      <span className="text-[10px] block mt-0.5 font-mono text-emerald-700">
-                        Witnessed by {project.closing.signingRepresentative || 'Arthur Green'} on {formatDate(project.closing.signedDate || '2026-05-22')}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      className="text-xs w-full bg-white border rounded px-3 py-2"
-                      placeholder="Type Representative Name (e.g. Arthur Green)"
-                      value={newTimelineOwner}
-                      onChange={e => setNewTimelineOwner(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!newTimelineOwner.trim()) return alert('Please enter signing representative name first');
-                        updateProject(draft => {
-                          draft.closing.contractStatus = ContractStatus.SIGNED;
-                          draft.closing.signingRepresentative = newTimelineOwner;
-                          draft.closing.signedDate = new Date().toISOString().split('T')[0];
-                          // Proactively suggest chapters outline if empty
-                          if (draft.preProduction.outlineChapters.length === 0) {
-                            draft.preProduction.outlineChapters = [
-                              'Chapter 1: Introduction and Scope',
-                              'Chapter 2: Essential Context',
-                              'Chapter 3: Core Methodology',
-                              'Chapter 4: Crucial Observations',
-                              'Chapter 5: Closing Summaries'
-                            ];
-                          }
-                        });
-                        setNewTimelineOwner('');
-                      }}
-                      className="bg-slate-900 hover:bg-slate-850 text-white font-bold text-xs py-2 px-4 rounded w-full flex items-center justify-center gap-1 transition-colors"
-                    >
-                      <PenTool size={13} />
-                      Execute Electro-Signature
-                    </button>
+              {/* Right: Print Contract Layout mockup paper */}
+              <div id="contract-paper-draft" className="bg-amber-50/20 border-2 border-dashed border-amber-800/10 rounded-2xl p-6 relative shadow-inner overflow-hidden min-h-[350px] flex flex-col justify-between">
+                {/* Gold seal */}
+                {project.closing.contractStatus === ContractStatus.SIGNED && (
+                  <div className="absolute right-4 top-4 w-12 h-12 rounded-full border-4 border-double border-amber-600 flex items-center justify-center bg-amber-500 text-amber-950 font-black text-[9px] rotate-[15deg] select-none shadow-md">
+                    SEALED
                   </div>
                 )}
 
-                <div className="flex bg-white p-1 rounded border border-slate-250 justify-between items-center text-[10px] text-slate-500">
-                  <span className="font-semibold px-2">Contract Status Flow:</span>
-                  <div className="flex gap-1.5">
-                    {([ContractStatus.DRAFT, ContractStatus.SENT, ContractStatus.SIGNED] as const).map(c => (
-                      <span 
-                        key={c}
-                        onClick={() => updateProject(draft => { draft.closing.contractStatus = c; })}
-                        className={`px-1.5 py-0.5 rounded cursor-pointer ${
-                          project.closing.contractStatus === c 
-                            ? 'bg-slate-900 text-white font-bold' 
-                            : 'text-slate-400'
-                        }`}
-                      >
-                        {c.toUpperCase()}
-                      </span>
-                    ))}
+                <div className="space-y-3">
+                  <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase">OFFICIAL RECIPIENT PRINT COPY</span>
+                  <span className="text-base font-display font-extrabold text-slate-800 block border-b border-slate-200 pb-1.5">
+                    Publishing Agreement Draft
+                  </span>
+
+                  <div className="text-[11px] text-slate-600 space-y-2 font-serif leading-relaxed max-h-[220px] overflow-y-auto pr-1">
+                    <p>
+                      <strong>PARTIES:</strong> This binding contract is entered into on this day between <strong>Rene Turos Editorial Group</strong> and the client representative <strong>{project.clientContact.name || '(N/A)'}</strong>.
+                    </p>
+                    <p>
+                      <strong>CONSIDERATION:</strong> Publisher shall furnish full structural formatting, bespoke dust jacket designs, ISBN records, and premium printed books.
+                    </p>
+                    <p>
+                      <strong>FEE STRUCTURE:</strong> Client agrees to pay the final locked net amount of <strong>Rp {(project.closing.finalAmount || 0).toLocaleString('id-ID')} IDR</strong>, according to agreed installment targets.
+                    </p>
+                    <p className="text-[10px] text-slate-400 italic">
+                      The electronic signature certifies absolute confirmation of timelines outlined under Pre-Production guidelines.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-200/60 mt-4 text-[10px] text-slate-500 flex justify-between">
+                  <div>
+                    <span className="block font-bold">Rene Turos Director</span>
+                    <span className="block text-[9px] italic text-slate-400">Luqman Hakim Arifin</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="block font-bold">Client Cosignee</span>
+                    <span className="block text-[9px] italic text-slate-400">
+                      {project.closing.contractStatus === ContractStatus.SIGNED 
+                        ? project.closing.signingRepresentative 
+                        : 'Pending Signature'}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right: Print Contract Layout mockup paper */}
-            <div id="contract-paper-draft" className="bg-amber-50/20 border-2 border-dashed border-amber-800/10 rounded-2xl p-6 relative shadow-inner overflow-hidden min-h-[350px] flex flex-col justify-between">
-              {/* Gold seal */}
-              {project.closing.contractStatus === ContractStatus.SIGNED && (
-                <div className="absolute right-4 top-4 w-12 h-12 rounded-full border-4 border-double border-amber-600 flex items-center justify-center bg-amber-500 text-amber-950 font-black text-[9px] rotate-[15deg] select-none shadow-md">
-                  SEALED
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <span className="text-[9px] font-mono tracking-widest text-slate-400 uppercase">OFFICIAL RECIPIENT PRINT COPY</span>
-                <span className="text-base font-display font-extrabold text-slate-800 block border-b border-slate-200 pb-1.5">
-                  Publishing Agreement Draft
-                </span>
-
-                <div className="text-[11px] text-slate-600 space-y-2 font-serif leading-relaxed max-h-[220px] overflow-y-auto pr-1">
-                  <p>
-                    <strong>PARTIES:</strong> This binding contract is entered into on this day between <strong>Rene Turos Editorial Group</strong> and the client representative <strong>{project.clientContact.name || '(N/A)'}</strong>.
-                  </p>
-                  <p>
-                    <strong>CONSIDERATION:</strong> Publisher shall furnish full structural formatting, bespoke dust jacket designs, ISBN records, and premium printed books.
-                  </p>
-                  <p>
-                    <strong>FEE STRUCTURE:</strong> Client agrees to pay the final locked net amount of <strong>Rp {(project.closing.finalAmount || 0).toLocaleString('id-ID')} IDR</strong>, according to agreed installment targets.
-                  </p>
-                  <p className="text-[10px] text-slate-400 italic">
-                    The electronic signature certifies absolute confirmation of timelines outlined under Pre-Production guidelines.
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-200/60 mt-4 text-[10px] text-slate-500 flex justify-between">
+            {/* Contract Attachment Files Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              
+              {/* Card 1: Contract Draft Files upload */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
                 <div>
-                  <span className="block font-bold">Rene Turos Director</span>
-                  <span className="block text-[9px] italic text-slate-400">Evelyn Mercer</span>
+                  <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <FileText size={13} className="text-slate-550" />
+                    Contract Draft Document(s)
+                  </h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Attach preliminary files, reference formats, or edited contract revisions.
+                  </p>
                 </div>
-                <div className="text-right">
-                  <span className="block font-bold">Client Cosignee</span>
-                  <span className="block text-[9px] italic text-slate-400">
-                    {project.closing.contractStatus === ContractStatus.SIGNED 
-                      ? project.closing.signingRepresentative 
-                      : 'Pending Signature'}
-                  </span>
+
+                {/* Upload Zone */}
+                <div
+                  id="contract-draft-drop-area"
+                  onDragOver={handleContractDraftDragOver}
+                  onDrop={handleContractDraftDrop}
+                  onClick={() => document.getElementById('contract-draft-doc-picker')?.click()}
+                  className="border-2 border-dashed border-slate-200 hover:border-slate-850 bg-white hover:bg-slate-50/50 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
+                >
+                  <input
+                    type="file"
+                    id="contract-draft-doc-picker"
+                    className="hidden"
+                    onChange={handleContractDraftFileChange}
+                    multiple
+                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx"
+                  />
+                  <div className="flex justify-center text-slate-400 group-hover:text-slate-800 transition-colors">
+                    <FileText size={24} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-755">
+                      Drag & drop or <span className="text-slate-900 underline cursor-pointer">choose file(s)</span> to upload
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
+                    </p>
+                  </div>
                 </div>
+
+                {/* List of uploaded draft files */}
+                {project.closing.contractDraftDocuments && project.closing.contractDraftDocuments.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {project.closing.contractDraftDocuments.map((doc, idx) => (
+                      <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <div className="p-2 bg-slate-100 rounded-lg text-slate-605 shrink-0">
+                            <FileText size={15} />
+                          </div>
+                          <div className="truncate text-left">
+                            <p className="text-xs font-bold text-slate-800 truncate" title={doc.name}>
+                              {doc.name}
+                            </p>
+                            <p className="text-[9px] text-slate-400">
+                              {doc.uploadedBy ? (
+                                <span>
+                                  By <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
+                                  {doc.uploadedAt && (
+                                    <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
+                                      on {new Date(doc.uploadedAt).toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                "Seeded File"
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {confirmDeleteContractDraftDocIndex === idx ? (
+                            <div className="flex items-center gap-1 bg-red-50 border border-red-100 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-150">
+                              <span className="text-[9px] font-bold text-red-700 px-1">Are you sure?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateProject(draft => {
+                                    if (draft.closing.contractDraftDocuments) {
+                                      draft.closing.contractDraftDocuments.splice(idx, 1);
+                                    }
+                                  });
+                                  setConfirmDeleteContractDraftDocIndex(null);
+                                }}
+                                className="px-2 py-0.5 text-[8px] font-black text-white bg-red-600 hover:bg-red-700 rounded transition-all shadow-xs shrink-0 cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteContractDraftDocIndex(null)}
+                                className="px-2 py-0.5 text-[8px] font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-all shrink-0 cursor-pointer"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {doc.data && (
+                                <a
+                                  href={doc.data}
+                                  download={doc.name}
+                                  className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                >
+                                  Download
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteContractDraftDocIndex(idx)}
+                                className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
+                                title="Delete this file"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Card 2: Signed Final Contract Files upload */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+                <div>
+                  <h5 className="text-xs font-extrabold text-[#0c6b54] uppercase tracking-wider flex items-center gap-1.5 font-display">
+                    <FileText size={13} className="text-[#0c6b54]" />
+                    Signed Final Contract Document(s)
+                  </h5>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Attach executed scanned physical signed & stamped agreements.
+                  </p>
+                </div>
+
+                {/* Upload Zone */}
+                <div
+                  id="signed-contract-drop-area"
+                  onDragOver={handleSignedContractDragOver}
+                  onDrop={handleSignedContractDrop}
+                  onClick={() => document.getElementById('signed-contract-doc-picker')?.click()}
+                  className="border-2 border-dashed border-slate-200 hover:border-[#0c6b54] bg-white hover:bg-[#0c6b54]/5 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
+                >
+                  <input
+                    type="file"
+                    id="signed-contract-doc-picker"
+                    className="hidden"
+                    onChange={handleSignedContractFileChange}
+                    multiple
+                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx"
+                  />
+                  <div className="flex justify-center text-slate-400 group-hover:text-[#0c6b54] transition-colors">
+                    <FileText size={24} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-755">
+                      Drag & drop or <span className="text-[#0c6b54] underline cursor-pointer">choose file(s)</span> to upload
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
+                    </p>
+                  </div>
+                </div>
+
+                {/* List of uploaded signed final contract files */}
+                {project.closing.signedContractDocuments && project.closing.signedContractDocuments.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    {project.closing.signedContractDocuments.map((doc, idx) => (
+                      <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <div className="p-2 bg-emerald-50 rounded-lg text-[#0c6b54] shrink-0 font-bold">
+                            <FileText size={15} />
+                          </div>
+                          <div className="truncate text-left">
+                            <p className="text-xs font-bold text-slate-800 truncate" title={doc.name}>
+                              {doc.name}
+                            </p>
+                            <p className="text-[9px] text-slate-400">
+                              {doc.uploadedBy ? (
+                                <span>
+                                  By <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
+                                  {doc.uploadedAt && (
+                                    <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
+                                      on {new Date(doc.uploadedAt).toLocaleString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </span>
+                                  )}
+                                </span>
+                              ) : (
+                                "Seeded File"
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {confirmDeleteSignedContractDocIndex === idx ? (
+                            <div className="flex items-center gap-1 bg-red-50 border border-red-100 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-150">
+                              <span className="text-[9px] font-bold text-red-700 px-1">Are you sure?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateProject(draft => {
+                                    if (draft.closing.signedContractDocuments) {
+                                      draft.closing.signedContractDocuments.splice(idx, 1);
+                                    }
+                                  });
+                                  setConfirmDeleteSignedContractDocIndex(null);
+                                }}
+                                className="px-2 py-0.5 text-[8px] font-black text-white bg-red-600 hover:bg-red-700 rounded transition-all shadow-xs shrink-0 cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteSignedContractDocIndex(null)}
+                                className="px-2 py-0.5 text-[8px] font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-all shrink-0 cursor-pointer"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              {doc.data && (
+                                <a
+                                  href={doc.data}
+                                  download={doc.name}
+                                  className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                >
+                                  Download
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteSignedContractDocIndex(idx)}
+                                className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
+                                title="Delete this file"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         )}
