@@ -151,6 +151,7 @@ export interface TimelineTask {
   taskName: string;
   personInCharge: string;
   dueDate: string;
+  startDate?: string;
   status: TaskStatus;
 }
 

@@ -21,7 +21,8 @@ import {
 import { 
   User, Mail, Phone, Calendar, Clock, MapPin, CheckCircle2, AlertCircle, Plus, Trash2, 
   ChevronRight, FileText, DollarSign, PenTool, Layout, Check, BookOpen, ShieldCheck, 
-  Sparkles, HelpCircle, FileCheck, Layers, Award, Tag, Truck, CheckSquare, RefreshCw 
+  Sparkles, HelpCircle, FileCheck, Layers, Award, Tag, Truck, CheckSquare, RefreshCw,
+  Link, ExternalLink
 } from 'lucide-react';
 import TrophyPreview from './TrophyPreview';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -68,6 +69,12 @@ export default function PhaseDetailForm({
   const [newTimelineTask, setNewTimelineTask] = useState('');
   const [newTimelineOwner, setNewTimelineOwner] = useState('');
   const [newTimelineDate, setNewTimelineDate] = useState('');
+  const [newTimelineStartDate, setNewTimelineStartDate] = useState('');
+  const [editingTimelineTaskId, setEditingTimelineTaskId] = useState<string | null>(null);
+  const [deletingMilestoneId, setDeletingMilestoneId] = useState<string | null>(null);
+  const [editingChapterIdx, setEditingChapterIdx] = useState<number | null>(null);
+  const [deletingChapterIdx, setDeletingChapterIdx] = useState<number | null>(null);
+  const [deletingTeamRoleIdx, setDeletingTeamRoleIdx] = useState<number | null>(null);
 
   const [newEndorseAuthor, setNewEndorseAuthor] = useState('');
   const [newEndorseTitle, setNewEndorseTitle] = useState('');
@@ -96,6 +103,11 @@ export default function PhaseDetailForm({
     setConfirmDeleteProposalDocIndex(null);
     setConfirmDeleteContractDraftDocIndex(null);
     setConfirmDeleteSignedContractDocIndex(null);
+    setDeletingMilestoneId(null);
+    setEditingTimelineTaskId(null);
+    setDeletingChapterIdx(null);
+    setEditingChapterIdx(null);
+    setDeletingTeamRoleIdx(null);
     setNewFeedbackLog('');
   }, [project.id, viewingPhaseIndex]);
 
@@ -122,241 +134,122 @@ export default function PhaseDetailForm({
     onChangeProject(cloned);
   };
 
-  // File upload logic for minutes of meeting
-  const handleMinutesFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    readMinutesFile(file);
+  // States for external links inputs
+  const [newMOMName, setNewMOMName] = useState('');
+  const [newMOMLink, setNewMOMLink] = useState('');
+
+  const [newBriefDocName, setNewBriefDocName] = useState('');
+  const [newBriefDocLink, setNewBriefDocLink] = useState('');
+
+  const [newConceptDocName, setNewConceptDocName] = useState('');
+  const [newConceptDocLink, setNewConceptDocLink] = useState('');
+
+  const [newProposalDocName, setNewProposalDocName] = useState('');
+  const [newProposalDocLink, setNewProposalDocLink] = useState('');
+
+  const [newContractDraftName, setNewContractDraftName] = useState('');
+  const [newContractDraftLink, setNewContractDraftLink] = useState('');
+
+  const [newSignedContractName, setNewSignedContractName] = useState('');
+  const [newSignedContractLink, setNewSignedContractLink] = useState('');
+
+  // Add direct external link for Minutes of Meeting
+  const handleSaveMOMLink = () => {
+    if (!newMOMLink.trim()) return;
+    updateProject(draft => {
+      draft.prospect.minutesOfMeetingFileName = newMOMName.trim() || 'Minutes of Meeting Link';
+      draft.prospect.minutesOfMeetingFileData = newMOMLink.trim();
+      draft.prospect.minutesOfMeetingUploadedBy = userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague';
+      draft.prospect.minutesOfMeetingUploadedAt = new Date().toISOString();
+    });
+    setNewMOMName('');
+    setNewMOMLink('');
   };
 
-  const handleMinutesDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleMinutesDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      readMinutesFile(file);
-    }
-  };
-
-  const readMinutesFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProject(draft => {
-        draft.prospect.minutesOfMeetingFileName = file.name;
-        draft.prospect.minutesOfMeetingFileData = reader.result as string;
-        draft.prospect.minutesOfMeetingUploadedBy = userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague';
-        draft.prospect.minutesOfMeetingUploadedAt = new Date().toISOString();
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // File upload logic for requirement brief documents
-  const handleBriefFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    for (let i = 0; i < files.length; i++) {
-      readBriefFile(files[i]);
-    }
-  };
-
-  const handleBriefDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleBriefDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        readBriefFile(files[i]);
+  // Add direct external link to lists
+  const handleAddBriefDocLink = () => {
+    if (!newBriefDocLink.trim()) return;
+    updateProject(draft => {
+      if (!draft.requirementBrief.documents) {
+        draft.requirementBrief.documents = [];
       }
-    }
-  };
-
-  const readBriefFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProject(draft => {
-        if (!draft.requirementBrief.documents) {
-          draft.requirementBrief.documents = [];
-        }
-        draft.requirementBrief.documents.push({
-          name: file.name,
-          data: reader.result as string,
-          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
-          uploadedAt: new Date().toISOString()
-        });
+      draft.requirementBrief.documents.push({
+        name: newBriefDocName.trim() || 'Requirement Brief Link',
+        data: newBriefDocLink.trim(),
+        uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+        uploadedAt: new Date().toISOString()
       });
-    };
-    reader.readAsDataURL(file);
+    });
+    setNewBriefDocName('');
+    setNewBriefDocLink('');
   };
 
-  // File upload logic for creative concept documents
-  const handleConceptFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    for (let i = 0; i < files.length; i++) {
-      readConceptFile(files[i]);
-    }
-  };
-
-  const handleConceptDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleConceptDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        readConceptFile(files[i]);
+  const handleAddConceptDocLink = () => {
+    if (!newConceptDocLink.trim()) return;
+    updateProject(draft => {
+      if (!draft.creativeBrief.creativeConceptDocuments) {
+        draft.creativeBrief.creativeConceptDocuments = [];
       }
-    }
-  };
-
-  const readConceptFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProject(draft => {
-        if (!draft.creativeBrief.creativeConceptDocuments) {
-          draft.creativeBrief.creativeConceptDocuments = [];
-        }
-        draft.creativeBrief.creativeConceptDocuments.push({
-          name: file.name,
-          data: reader.result as string,
-          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
-          uploadedAt: new Date().toISOString()
-        });
+      draft.creativeBrief.creativeConceptDocuments.push({
+        name: newConceptDocName.trim() || 'Creative Concept Link',
+        data: newConceptDocLink.trim(),
+        uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+        uploadedAt: new Date().toISOString()
       });
-    };
-    reader.readAsDataURL(file);
+    });
+    setNewConceptDocName('');
+    setNewConceptDocLink('');
   };
 
-  // File upload logic for proposal documents
-  const handleProposalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    for (let i = 0; i < files.length; i++) {
-      readProposalFile(files[i]);
-    }
-  };
-
-  const handleProposalDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleProposalDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        readProposalFile(files[i]);
+  const handleAddProposalDocLink = () => {
+    if (!newProposalDocLink.trim()) return;
+    updateProject(draft => {
+      if (!draft.proposal.documents) {
+        draft.proposal.documents = [];
       }
-    }
-  };
-
-  const readProposalFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProject(draft => {
-        if (!draft.proposal.documents) {
-          draft.proposal.documents = [];
-        }
-        draft.proposal.documents.push({
-          name: file.name,
-          data: reader.result as string,
-          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
-          uploadedAt: new Date().toISOString()
-        });
+      draft.proposal.documents.push({
+        name: newProposalDocName.trim() || 'Proposal Document Link',
+        data: newProposalDocLink.trim(),
+        uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+        uploadedAt: new Date().toISOString()
       });
-    };
-    reader.readAsDataURL(file);
+    });
+    setNewProposalDocName('');
+    setNewProposalDocLink('');
   };
 
-  // File upload logic for contract draft documents
-  const handleContractDraftFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    for (let i = 0; i < files.length; i++) {
-      readContractDraftFile(files[i]);
-    }
-  };
-
-  const handleContractDraftDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleContractDraftDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        readContractDraftFile(files[i]);
+  const handleAddContractDraftLink = () => {
+    if (!newContractDraftLink.trim()) return;
+    updateProject(draft => {
+      if (!draft.closing.contractDraftDocuments) {
+        draft.closing.contractDraftDocuments = [];
       }
-    }
-  };
-
-  const readContractDraftFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProject(draft => {
-        if (!draft.closing.contractDraftDocuments) {
-          draft.closing.contractDraftDocuments = [];
-        }
-        draft.closing.contractDraftDocuments.push({
-          name: file.name,
-          data: reader.result as string,
-          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
-          uploadedAt: new Date().toISOString()
-        });
+      draft.closing.contractDraftDocuments.push({
+        name: newContractDraftName.trim() || 'Contract Draft Link',
+        data: newContractDraftLink.trim(),
+        uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+        uploadedAt: new Date().toISOString()
       });
-    };
-    reader.readAsDataURL(file);
+    });
+    setNewContractDraftName('');
+    setNewContractDraftLink('');
   };
 
-  // File upload logic for signed final contract documents
-  const handleSignedContractFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    for (let i = 0; i < files.length; i++) {
-      readSignedContractFile(files[i]);
-    }
-  };
-
-  const handleSignedContractDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
-  const handleSignedContractDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        readSignedContractFile(files[i]);
+  const handleAddSignedContractLink = () => {
+    if (!newSignedContractLink.trim()) return;
+    updateProject(draft => {
+      if (!draft.closing.signedContractDocuments) {
+        draft.closing.signedContractDocuments = [];
       }
-    }
-  };
-
-  const readSignedContractFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateProject(draft => {
-        if (!draft.closing.signedContractDocuments) {
-          draft.closing.signedContractDocuments = [];
-        }
-        draft.closing.signedContractDocuments.push({
-          name: file.name,
-          data: reader.result as string,
-          uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
-          uploadedAt: new Date().toISOString()
-        });
+      draft.closing.signedContractDocuments.push({
+        name: newSignedContractName.trim() || 'Signed Final Contract Link',
+        data: newSignedContractLink.trim(),
+        uploadedBy: userProfile ? (userProfile.displayName || userProfile.username) : 'Active Colleague',
+        uploadedAt: new Date().toISOString()
       });
-    };
-    reader.readAsDataURL(file);
+    });
+    setNewSignedContractName('');
+    setNewSignedContractLink('');
   };
 
   // Helper values
@@ -730,49 +623,60 @@ export default function PhaseDetailForm({
                     )}
                   </div>
 
-                  {/* MINUTES OF MEETING FILE UPLOAD */}
+                  {/* MINUTES OF MEETING EXTERNAL LINK */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-extrabold text-slate-400 block uppercase">Minutes of Meeting File</label>
+                    <label className="text-[10px] font-extrabold text-slate-400 block uppercase">Minutes of Meeting External Link</label>
                     
-                    {!project.prospect.minutesOfMeetingFileName ? (
-                      <div
-                        id="minutes-drop-area"
-                        onDragOver={handleMinutesDragOver}
-                        onDrop={handleMinutesDrop}
-                        onClick={() => document.getElementById('minutes-file-picker')?.click()}
-                        className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white hover:bg-emerald-50/10 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
-                      >
-                        <input
-                          type="file"
-                          id="minutes-file-picker"
-                          className="hidden"
-                          onChange={handleMinutesFileChange}
-                          accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg cursor-pointer"
-                        />
-                        <div className="flex justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
-                          <FileText size={28} />
+                    {!project.prospect.minutesOfMeetingFileData ? (
+                      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. MoM Meeting 1"
+                              value={newMOMName}
+                              onChange={e => setNewMOMName(e.target.value)}
+                              className="w-full text-xs bg-slate-50 border border-slate-205 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                            <input
+                              type="text"
+                              placeholder="https://drive.google.com/..."
+                              value={newMOMLink}
+                              onChange={e => setNewMOMLink(e.target.value)}
+                              className="w-full text-xs bg-slate-50 border border-slate-205 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-xs font-bold text-slate-750">
-                            Drag & drop or <span className="text-emerald-600 underline">choose file</span> to upload
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            Accepts PDF, DOCX, TXT, or images (Max 1MB)
-                          </p>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={handleSaveMOMLink}
+                          disabled={!newMOMLink.trim()}
+                          className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                            newMOMLink.trim()
+                              ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                          }`}
+                        >
+                          <Plus size={12} />
+                          Save MoM External Link
+                        </button>
                       </div>
                     ) : (
                       <div className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
                         <div className="flex items-center gap-2.5 truncate">
-                          <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
-                            <FileText size={18} />
+                          <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 shrink-0">
+                            <Link size={18} />
                           </div>
-                          <div className="truncate">
+                          <div className="truncate text-left">
                             <p className="text-xs font-bold text-slate-800 truncate" title={project.prospect.minutesOfMeetingFileName}>
                               {project.prospect.minutesOfMeetingFileName}
                             </p>
                             <p className="text-[9px] text-slate-400">
-                              Uploaded by <span className="font-semibold text-emerald-750">{project.prospect.minutesOfMeetingUploadedBy || 'Active Colleague'}</span>
+                              Added by <span className="font-semibold text-emerald-750">{project.prospect.minutesOfMeetingUploadedBy || 'Active Colleague'}</span>
                               {project.prospect.minutesOfMeetingUploadedAt && (
                                 <span className="text-[8px] text-slate-400 block sm:inline sm:ml-1.5 font-mono">
                                   on {new Date(project.prospect.minutesOfMeetingUploadedAt).toLocaleString('en-US', {
@@ -798,6 +702,7 @@ export default function PhaseDetailForm({
                                     draft.prospect.minutesOfMeetingFileName = undefined;
                                     draft.prospect.minutesOfMeetingFileData = undefined;
                                     draft.prospect.minutesOfMeetingUploadedBy = undefined;
+                                    draft.prospect.minutesOfMeetingUploadedAt = undefined;
                                   });
                                   setShowClearMOMConfirm(false);
                                 }}
@@ -818,16 +723,18 @@ export default function PhaseDetailForm({
                               {project.prospect.minutesOfMeetingFileData && (
                                 <a
                                   href={project.prospect.minutesOfMeetingFileData}
-                                  download={project.prospect.minutesOfMeetingFileName}
-                                  className="px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
                                 >
-                                  Download
+                                  <ExternalLink size={10} />
+                                  Open Link
                                 </a>
                               )}
                               <button
                                 type="button"
                                 onClick={() => setShowClearMOMConfirm(true)}
-                                className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all"
+                                className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
                               >
                                 Remove
                               </button>
@@ -1095,58 +1002,67 @@ export default function PhaseDetailForm({
               </div>
             </div>
 
-            {/* BRIEF DOCUMENTS UPLOAD */}
+            {/* BRIEF DOCUMENTS EXTERNAL LINKS */}
             <div className="space-y-2 border-t border-slate-200/60 pt-4">
               <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-                Requirement Brief Documents
+                Requirement Brief Documents (External Links)
               </label>
 
-              {/* Upload Drop Zone */}
-              <div
-                id="brief-doc-drop-area"
-                onDragOver={handleBriefDragOver}
-                onDrop={handleBriefDrop}
-                onClick={() => document.getElementById('brief-doc-picker')?.click()}
-                className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white hover:bg-emerald-50/10 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
-              >
-                <input
-                  type="file"
-                  id="brief-doc-picker"
-                  className="hidden"
-                  onChange={handleBriefFileChange}
-                  multiple
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx cursor-pointer"
-                />
-                <div className="flex justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
-                  <FileText size={28} />
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Google Drive Brief folder"
+                      value={newBriefDocName}
+                      onChange={e => setNewBriefDocName(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/..."
+                      value={newBriefDocLink}
+                      onChange={e => setNewBriefDocLink(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-750">
-                    Drag & drop or <span className="text-emerald-600 underline">choose file(s)</span> to upload
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleAddBriefDocLink}
+                  disabled={!newBriefDocLink.trim()}
+                  className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    newBriefDocLink.trim()
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Plus size={12} />
+                  Add Brief Document External Link
+                </button>
               </div>
 
-              {/* Uploaded Documents List */}
+              {/* Saved Documents List */}
               {project.requirementBrief.documents && project.requirementBrief.documents.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                   {project.requirementBrief.documents.map((doc, idx) => (
                     <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
                       <div className="flex items-center gap-2.5 truncate">
                         <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 font-bold shrink-0">
-                          <FileText size={16} />
+                          <Link size={16} />
                         </div>
-                        <div className="truncate">
+                        <div className="truncate text-left">
                           <p className="text-xs font-bold text-slate-850 truncate" title={doc.name}>
                             {doc.name}
                           </p>
                           <p className="text-[9px] text-slate-400">
                             {doc.uploadedBy ? (
                               <span>
-                                By <span className="font-semibold text-emerald-700">{doc.uploadedBy}</span>
+                                Added by <span className="font-semibold text-emerald-700">{doc.uploadedBy}</span>
                                 {doc.uploadedAt && (
                                   <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
                                     on {new Date(doc.uploadedAt).toLocaleString('en-US', {
@@ -1196,10 +1112,12 @@ export default function PhaseDetailForm({
                             {doc.data && (
                               <a
                                 href={doc.data}
-                                download={doc.name}
-                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
                               >
-                                Download
+                                <ExternalLink size={10} />
+                                Open Link
                               </a>
                             )}
                             <button
@@ -1271,58 +1189,67 @@ export default function PhaseDetailForm({
               />
             </div>
 
-            {/* CREATIVE CONCEPT DOCUMENTS UPLOAD */}
+            {/* CREATIVE CONCEPT DOCUMENTS EXTERNAL LINKS */}
             <div className="space-y-2 border-t border-slate-200/60 pt-4">
               <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-                Creative Concept Document(s)
+                Creative Concept Document(s) (External Links)
               </label>
 
-              {/* Upload Drop Zone */}
-              <div
-                id="concept-doc-drop-area"
-                onDragOver={handleConceptDragOver}
-                onDrop={handleConceptDrop}
-                onClick={() => document.getElementById('concept-doc-picker')?.click()}
-                className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-white hover:bg-emerald-50/10 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
-              >
-                <input
-                  type="file"
-                  id="concept-doc-picker"
-                  className="hidden"
-                  onChange={handleConceptFileChange}
-                  multiple
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx cursor-pointer"
-                />
-                <div className="flex justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
-                  <FileText size={28} />
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Concept Board PDF Link"
+                      value={newConceptDocName}
+                      onChange={e => setNewConceptDocName(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/..."
+                      value={newConceptDocLink}
+                      onChange={e => setNewConceptDocLink(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-755">
-                    Drag & drop or <span className="text-emerald-600 underline">choose file(s)</span> to upload
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleAddConceptDocLink}
+                  disabled={!newConceptDocLink.trim()}
+                  className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    newConceptDocLink.trim()
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Plus size={12} />
+                  Add Concept Document External Link
+                </button>
               </div>
 
-              {/* Uploaded Documents List */}
+              {/* Saved Documents List */}
               {project.creativeBrief.creativeConceptDocuments && project.creativeBrief.creativeConceptDocuments.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                   {project.creativeBrief.creativeConceptDocuments.map((doc, idx) => (
                     <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
                       <div className="flex items-center gap-2.5 truncate">
                         <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 font-bold shrink-0">
-                          <FileText size={16} />
+                          <Link size={16} />
                         </div>
-                        <div className="truncate">
+                        <div className="truncate text-left">
                           <p className="text-xs font-bold text-slate-850 truncate" title={doc.name}>
                             {doc.name}
                           </p>
                           <p className="text-[9px] text-slate-400">
                             {doc.uploadedBy ? (
                               <span>
-                                By <span className="font-semibold text-emerald-700">{doc.uploadedBy}</span>
+                                Added by <span className="font-semibold text-emerald-700">{doc.uploadedBy}</span>
                                 {doc.uploadedAt && (
                                   <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
                                     on {new Date(doc.uploadedAt).toLocaleString('en-US', {
@@ -1372,10 +1299,12 @@ export default function PhaseDetailForm({
                             {doc.data && (
                               <a
                                 href={doc.data}
-                                download={doc.name}
-                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
                               >
-                                Download
+                                <ExternalLink size={10} />
+                                Open Link
                               </a>
                             )}
                             <button
@@ -1768,9 +1697,15 @@ export default function PhaseDetailForm({
                           draft.closing.finalAmount = proposalSum;
                         }
                       })}
-                      className={`px-3 py-1 rounded text-[11px] font-bold ${
+                      className={`px-3 py-1 rounded text-[11px] font-bold transition-all ${
                         project.proposal.status === p
-                          ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
+                          ? p === ProposalStatus.DRAFT
+                            ? 'bg-sky-500 text-slate-950 font-extrabold shadow-sm'
+                            : p === ProposalStatus.SENT
+                            ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
+                            : p === ProposalStatus.APPROVED
+                            ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-sm'
+                            : 'bg-rose-500 text-white font-extrabold shadow-sm'
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -1785,51 +1720,60 @@ export default function PhaseDetailForm({
             <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
               <div>
                 <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText size={13} className="text-slate-500" />
-                  Proposal Document(s)
+                  <Link size={13} className="text-slate-500" />
+                  Proposal Document(s) (External Links)
                 </h5>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  Upload official quotation proposals, breakdown spreadsheets, or signed estimate files.
+                  Input direct external link URLs (e.g. Google Drive, estimation spreadsheets, etc.).
                 </p>
               </div>
 
-              {/* Upload Drop Zone */}
-              <div
-                id="proposal-doc-drop-area"
-                onDragOver={handleProposalDragOver}
-                onDrop={handleProposalDrop}
-                onClick={() => document.getElementById('proposal-doc-picker')?.click()}
-                className="border-2 border-dashed border-slate-200 hover:border-slate-800 bg-white hover:bg-slate-50/50 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
-              >
-                <input
-                  type="file"
-                  id="proposal-doc-picker"
-                  className="hidden"
-                  onChange={handleProposalFileChange}
-                  multiple
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx"
-                />
-                <div className="flex justify-center text-slate-400 group-hover:text-slate-800 transition-colors">
-                  <FileText size={24} />
+              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Quotation Spreadsheet"
+                      value={newProposalDocName}
+                      onChange={e => setNewProposalDocName(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-805 focus:bg-white outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                    <input
+                      type="text"
+                      placeholder="https://drive.google.com/..."
+                      value={newProposalDocLink}
+                      onChange={e => setNewProposalDocLink(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-805 focus:bg-white outline-none"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-755">
-                    Drag & drop or <span className="text-slate-900 underline cursor-pointer">choose file(s)</span> to upload
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleAddProposalDocLink}
+                  disabled={!newProposalDocLink.trim()}
+                  className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    newProposalDocLink.trim()
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Plus size={12} />
+                  Add Proposal Document External Link
+                </button>
               </div>
 
-              {/* Uploaded Documents List */}
+              {/* Saved Documents List */}
               {project.proposal.documents && project.proposal.documents.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                   {project.proposal.documents.map((doc, idx) => (
                     <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
                       <div className="flex items-center gap-2.5 truncate">
                         <div className="p-2 bg-slate-100 rounded-lg text-slate-600 font-bold shrink-0">
-                          <FileText size={16} />
+                          <Link size={16} />
                         </div>
                         <div className="truncate text-left">
                           <p className="text-xs font-bold text-slate-850 truncate" title={doc.name}>
@@ -1838,7 +1782,7 @@ export default function PhaseDetailForm({
                           <p className="text-[9px] text-slate-400">
                             {doc.uploadedBy ? (
                               <span>
-                                By <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
+                                Added by <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
                                 {doc.uploadedAt && (
                                   <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
                                     on {new Date(doc.uploadedAt).toLocaleString('en-US', {
@@ -1888,10 +1832,12 @@ export default function PhaseDetailForm({
                             {doc.data && (
                               <a
                                 href={doc.data}
-                                download={doc.name}
-                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
                               >
-                                Download
+                                <ExternalLink size={10} />
+                                Open Link
                               </a>
                             )}
                             <button
@@ -2011,10 +1957,14 @@ export default function PhaseDetailForm({
                         <span 
                           key={c}
                           onClick={() => updateProject(draft => { draft.closing.contractStatus = c; })}
-                          className={`px-1.5 py-0.5 rounded cursor-pointer ${
+                          className={`px-2.5 py-0.5 rounded cursor-pointer transition-all ${
                             project.closing.contractStatus === c 
-                              ? 'bg-slate-900 text-white font-bold' 
-                              : 'text-slate-400'
+                              ? c === ContractStatus.DRAFT
+                                ? 'bg-sky-500 text-slate-950 font-extrabold shadow-sm'
+                                : c === ContractStatus.SENT
+                                ? 'bg-amber-400 text-slate-950 font-extrabold shadow-sm'
+                                : 'bg-emerald-500 text-slate-950 font-extrabold shadow-sm'
+                              : 'text-slate-400 hover:text-slate-600'
                           }`}
                         >
                           {c.toUpperCase()}
@@ -2068,63 +2018,71 @@ export default function PhaseDetailForm({
                         ? project.closing.signingRepresentative 
                         : 'Pending Signature'}
                     </span>
-                  </div>
                 </div>
               </div>
-            </div>
+            </div> {/* Close grid-cols-2 */}
 
             {/* Contract Attachment Files Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+            <div className="grid grid-cols-1 gap-6 pt-4 border-t border-slate-200/60">
               
-              {/* Card 1: Contract Draft Files upload */}
-              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+              {/* Card 1: Contract Draft Files external links */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4 text-left">
                 <div>
                   <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                    <FileText size={13} className="text-slate-550" />
-                    Contract Draft Document(s)
+                    <Link size={13} className="text-slate-550" />
+                    Contract Draft Document(s) (External Links)
                   </h5>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    Attach preliminary files, reference formats, or edited contract revisions.
+                    Input preliminary draft URLs, reference agreements, or design contract revision links.
                   </p>
                 </div>
 
-                {/* Upload Zone */}
-                <div
-                  id="contract-draft-drop-area"
-                  onDragOver={handleContractDraftDragOver}
-                  onDrop={handleContractDraftDrop}
-                  onClick={() => document.getElementById('contract-draft-doc-picker')?.click()}
-                  className="border-2 border-dashed border-slate-200 hover:border-slate-850 bg-white hover:bg-slate-50/50 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
-                >
-                  <input
-                    type="file"
-                    id="contract-draft-doc-picker"
-                    className="hidden"
-                    onChange={handleContractDraftFileChange}
-                    multiple
-                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx"
-                  />
-                  <div className="flex justify-center text-slate-400 group-hover:text-slate-800 transition-colors">
-                    <FileText size={24} />
+                <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Contract Draft v1"
+                        value={newContractDraftName}
+                        onChange={e => setNewContractDraftName(e.target.value)}
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-805 focus:bg-white outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                      <input
+                        type="text"
+                        placeholder="https://drive.google.com/..."
+                        value={newContractDraftLink}
+                        onChange={e => setNewContractDraftLink(e.target.value)}
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-805 focus:bg-white outline-none"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-755">
-                      Drag & drop or <span className="text-slate-900 underline cursor-pointer">choose file(s)</span> to upload
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddContractDraftLink}
+                    disabled={!newContractDraftLink.trim()}
+                    className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      newContractDraftLink.trim()
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <Plus size={12} />
+                    Add Contract Draft Link
+                  </button>
                 </div>
 
-                {/* List of uploaded draft files */}
+                {/* List of draft files */}
                 {project.closing.contractDraftDocuments && project.closing.contractDraftDocuments.length > 0 && (
                   <div className="space-y-2 mt-3">
                     {project.closing.contractDraftDocuments.map((doc, idx) => (
                       <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
                         <div className="flex items-center gap-2.5 truncate">
                           <div className="p-2 bg-slate-100 rounded-lg text-slate-605 shrink-0">
-                            <FileText size={15} />
+                            <Link size={15} />
                           </div>
                           <div className="truncate text-left">
                             <p className="text-xs font-bold text-slate-800 truncate" title={doc.name}>
@@ -2133,7 +2091,7 @@ export default function PhaseDetailForm({
                             <p className="text-[9px] text-slate-400">
                               {doc.uploadedBy ? (
                                 <span>
-                                  By <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
+                                  Added by <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
                                   {doc.uploadedAt && (
                                     <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
                                       on {new Date(doc.uploadedAt).toLocaleString('en-US', {
@@ -2146,7 +2104,7 @@ export default function PhaseDetailForm({
                                   )}
                                 </span>
                               ) : (
-                                "Seeded File"
+                                "Seeded Link"
                               )}
                             </p>
                           </div>
@@ -2183,17 +2141,19 @@ export default function PhaseDetailForm({
                               {doc.data && (
                                 <a
                                   href={doc.data}
-                                  download={doc.name}
-                                  className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
                                 >
-                                  Download
+                                  <ExternalLink size={10} />
+                                  Open Link
                                 </a>
                               )}
                               <button
                                 type="button"
                                 onClick={() => setConfirmDeleteContractDraftDocIndex(idx)}
                                 className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
-                                title="Delete this file"
+                                title="Delete this draft"
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -2206,45 +2166,54 @@ export default function PhaseDetailForm({
                 )}
               </div>
 
-              {/* Card 2: Signed Final Contract Files upload */}
-              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+              {/* Card 2: Signed Final Contract external links */}
+              <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4 text-left">
                 <div>
                   <h5 className="text-xs font-extrabold text-[#0c6b54] uppercase tracking-wider flex items-center gap-1.5 font-display">
-                    <FileText size={13} className="text-[#0c6b54]" />
-                    Signed Final Contract Document(s)
+                    <Link size={13} className="text-[#0c6b54]" />
+                    Signed Final Contract Document(s) (External Links)
                   </h5>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    Attach executed scanned physical signed & stamped agreements.
+                    Input direct URLs to executed physical signed & stamped agreements.
                   </p>
                 </div>
 
-                {/* Upload Zone */}
-                <div
-                  id="signed-contract-drop-area"
-                  onDragOver={handleSignedContractDragOver}
-                  onDrop={handleSignedContractDrop}
-                  onClick={() => document.getElementById('signed-contract-doc-picker')?.click()}
-                  className="border-2 border-dashed border-slate-200 hover:border-[#0c6b54] bg-white hover:bg-[#0c6b54]/5 rounded-xl p-4 text-center cursor-pointer transition-all space-y-2 group"
-                >
-                  <input
-                    type="file"
-                    id="signed-contract-doc-picker"
-                    className="hidden"
-                    onChange={handleSignedContractFileChange}
-                    multiple
-                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.xls,.xlsx"
-                  />
-                  <div className="flex justify-center text-slate-400 group-hover:text-[#0c6b54] transition-colors">
-                    <FileText size={24} />
+                <div className="bg-white border border-[#0c6b54]/10 rounded-xl p-4 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Signed Contract Final"
+                        value={newSignedContractName}
+                        onChange={e => setNewSignedContractName(e.target.value)}
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-805 focus:bg-white outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                      <input
+                        type="text"
+                        placeholder="https://drive.google.com/..."
+                        value={newSignedContractLink}
+                        onChange={e => setNewSignedContractLink(e.target.value)}
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-805 focus:bg-white outline-none"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-slate-755">
-                      Drag & drop or <span className="text-[#0c6b54] underline cursor-pointer">choose file(s)</span> to upload
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      Accepts PDF, DOCX, XLSX, TXT, or images (Each Max 1MB)
-                    </p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddSignedContractLink}
+                    disabled={!newSignedContractLink.trim()}
+                    className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                      newSignedContractLink.trim()
+                        ? 'bg-[#0c6b54] hover:bg-[#074f3e] text-white cursor-pointer'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <Plus size={12} />
+                    Add Signed Contract Link
+                  </button>
                 </div>
 
                 {/* List of uploaded signed final contract files */}
@@ -2254,16 +2223,16 @@ export default function PhaseDetailForm({
                       <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
                         <div className="flex items-center gap-2.5 truncate">
                           <div className="p-2 bg-emerald-50 rounded-lg text-[#0c6b54] shrink-0 font-bold">
-                            <FileText size={15} />
+                            <Link size={15} />
                           </div>
                           <div className="truncate text-left">
-                            <p className="text-xs font-bold text-slate-800 truncate" title={doc.name}>
+                            <p className="text-xs font-bold text-slate-805 truncate" title={doc.name}>
                               {doc.name}
                             </p>
                             <p className="text-[9px] text-slate-400">
                               {doc.uploadedBy ? (
                                 <span>
-                                  By <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
+                                  Added by <span className="font-semibold text-slate-700">{doc.uploadedBy}</span>
                                   {doc.uploadedAt && (
                                     <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
                                       on {new Date(doc.uploadedAt).toLocaleString('en-US', {
@@ -2276,7 +2245,7 @@ export default function PhaseDetailForm({
                                   )}
                                 </span>
                               ) : (
-                                "Seeded File"
+                                "Seeded Link"
                               )}
                             </p>
                           </div>
@@ -2313,10 +2282,12 @@ export default function PhaseDetailForm({
                               {doc.data && (
                                 <a
                                   href={doc.data}
-                                  download={doc.name}
-                                  className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2 py-1 text-[10px] font-bold text-[#0c6b54] hover:text-[#074f3e] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all flex items-center gap-1"
                                 >
-                                  Download
+                                  <ExternalLink size={10} />
+                                  Open Link
                                 </a>
                               )}
                               <button
@@ -2336,7 +2307,7 @@ export default function PhaseDetailForm({
                 )}
               </div>
 
-            </div>
+            </div>         </div>
           </div>
         )}
 
@@ -2347,47 +2318,190 @@ export default function PhaseDetailForm({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Step 7.1: Outline Chapters List */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3 col-span-1">
-              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest border-b border-slate-250 pb-1.5 flex items-center justify-between">
-                <span>Book Outline Details</span>
-                <span className="bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded text-[10px]">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4 col-span-1 md:col-span-3 text-left animate-in fade-in duration-200">
+              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest border-b border-slate-200/80 pb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  Book Outline Details
+                </span>
+                <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">
                   {project.preProduction.outlineChapters.length} Chapters
                 </span>
               </h4>
 
-              {/* Chapters list */}
-              <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
-                {project.preProduction.outlineChapters.map((ch, idx) => (
-                  <div key={idx} className="flex items-center justify-between gap-1 bg-white p-2 border rounded-lg text-xs">
-                    <span className="font-semibold text-slate-700 truncate max-w-[150px]">
-                      {ch}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateProject(draft => {
-                        draft.preProduction.outlineChapters = draft.preProduction.outlineChapters.filter((_, i) => i !== idx);
-                      })}
-                      className="text-slate-300 hover:text-red-500"
+              {/* Chapters list in structured responsive grid (Wider cols-6 layout: 2 columns on medium / large screens) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[380px] overflow-y-auto pr-1">
+                {project.preProduction.outlineChapters.map((ch, idx) => {
+                  const isEditing = editingChapterIdx === idx;
+                  const isDeleting = deletingChapterIdx === idx;
+
+                  if (isEditing) {
+                    return (
+                      <div key={idx} className="flex flex-col gap-2.5 bg-slate-50 border border-slate-300 rounded-xl p-3.5 shadow-3xs text-left animate-in duration-150 zoom-in-95">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] bg-slate-200 text-slate-700 rounded px-1.5 py-0.5 font-bold uppercase tracking-wide">
+                            Chapter {idx + 1}
+                          </span>
+                          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest">Editing Mode</span>
+                        </div>
+                        
+                        <input
+                          type="text"
+                          value={ch}
+                          onChange={(e) => updateProject(draft => {
+                            if (draft.preProduction.outlineChapters) {
+                              draft.preProduction.outlineChapters[idx] = e.target.value;
+                            }
+                            if (draft.production.chapters && draft.production.chapters[idx]) {
+                              draft.production.chapters[idx].chapterTitle = e.target.value;
+                            }
+                          })}
+                          placeholder={`Chapter ${idx + 1} Title`}
+                          className="bg-white border hover:border-slate-300 focus:border-slate-400 rounded-lg text-xs px-2.5 py-1.5 w-full outline-none font-semibold text-slate-800 transition-all shadow-3xs"
+                          autoFocus
+                        />
+
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/50 mt-1">
+                          {isDeleting ? (
+                            <div className="flex items-center gap-1.5 bg-red-50 border border-red-150 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-100">
+                              <span className="text-[9px] font-extrabold text-red-700 px-1">Delete?</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateProject(draft => {
+                                    draft.preProduction.outlineChapters.splice(idx, 1);
+                                    if (draft.production.chapters && draft.production.chapters[idx]) {
+                                      draft.production.chapters.splice(idx, 1);
+                                    }
+                                    if (draft.production.chapters) {
+                                      draft.production.chapters.forEach((item: any, index: number) => {
+                                        item.chapterNumber = index + 1;
+                                      });
+                                    }
+                                  });
+                                  setDeletingChapterIdx(null);
+                                  setEditingChapterIdx(null);
+                                }}
+                                className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[9px] px-2.5 py-1 rounded transition-all shadow-3xs"
+                              >
+                                Yes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingChapterIdx(null)}
+                                className="text-slate-500 hover:text-slate-800 font-bold text-[9px] bg-white border border-slate-250 px-2 py-1 rounded transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingChapterIdx(idx)}
+                              className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:bg-red-55 px-2.5 py-1 rounded transition-all"
+                            >
+                              Delete Chapter
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setEditingChapterIdx(null)}
+                            className="text-[10px] font-extrabold text-slate-600 hover:text-slate-900 bg-white border border-slate-250 px-3 py-1 rounded-lg transition-all shadow-3xs"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div 
+                      key={idx} 
+                      className="flex items-center justify-between gap-3 bg-white p-3.5 border border-slate-200/80 rounded-xl shadow-3xs transition-all hover:border-slate-350 hover:shadow-2xs group cursor-pointer text-left"
+                      onClick={() => setEditingChapterIdx(idx)}
                     >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
+                        <span className="font-mono text-[10px] bg-slate-105 text-slate-500 rounded px-1.5 py-0.5 shrink-0 font-bold">
+                          Ch {idx + 1}
+                        </span>
+                        <span className="font-semibold text-slate-700 truncate text-xs hover:text-slate-900 transition-colors" title={ch}>
+                          {ch || 'Unnamed Chapter'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={e => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingChapterIdx(idx)}
+                          className="text-slate-400 hover:text-blue-500 p-1 hover:bg-blue-50/50 rounded transition-all"
+                          title={`Edit Chapter ${idx + 1}`}
+                        >
+                          <PenTool size={10} />
+                        </button>
+                        
+                        {isDeleting ? (
+                          <div className="flex items-center gap-1 bg-red-50 border border-red-150 rounded-lg p-0.5 animate-in fade-in duration-100">
+                            <span className="text-[8px] font-extrabold text-red-700 px-1">Delete?</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateProject(draft => {
+                                  draft.preProduction.outlineChapters.splice(idx, 1);
+                                  if (draft.production.chapters && draft.production.chapters[idx]) {
+                                    draft.production.chapters.splice(idx, 1);
+                                  }
+                                  if (draft.production.chapters) {
+                                    draft.production.chapters.forEach((item: any, index: number) => {
+                                      item.chapterNumber = index + 1;
+                                    });
+                                  }
+                                });
+                                setDeletingChapterIdx(null);
+                              }}
+                              className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeletingChapterIdx(null)}
+                              className="text-slate-500 font-extrabold text-[8px]"
+                            >
+                              No
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setDeletingChapterIdx(idx)}
+                            className="text-slate-350 hover:text-red-500 hover:bg-red-50 p-1 rounded-md transition-all font-bold text-xs cursor-pointer"
+                            title={`Delete Chapter ${idx + 1}`}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
                 
                 {project.preProduction.outlineChapters.length === 0 && (
-                  <p className="text-[11px] text-slate-400 italic text-center py-4">No chapters added. Formulate outline below!</p>
+                  <p className="text-[11px] text-slate-400 italic text-center py-6 col-span-full">No chapters added. Formulate outline below!</p>
                 )}
               </div>
 
               {/* Add Chapter Form */}
-              <div className="flex gap-1.5 pt-1.5">
-                <input
-                  type="text"
-                  placeholder="Chapter Title"
-                  value={newChapterTitle}
-                  onChange={e => setNewChapterTitle(e.target.value)}
-                  className="bg-white border rounded text-xs px-2.5 py-1.5 flex-1"
-                />
+              <div className="pt-3.5 border-t border-slate-200/50 flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    placeholder="Enter Chapter Title (e.g. Chapter 1: The Gathering Storm)"
+                    value={newChapterTitle}
+                    onChange={e => setNewChapterTitle(e.target.value)}
+                    className="bg-white border hover:border-slate-300 focus:border-slate-400 rounded-lg text-xs px-3 py-2 w-full outline-none font-medium text-slate-700 shadow-3xs transition-all"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => {
@@ -2406,30 +2520,68 @@ export default function PhaseDetailForm({
                     });
                     setNewChapterTitle('');
                   }}
-                  className="bg-slate-900 text-white font-bold text-xs px-2.5 rounded hover:bg-slate-850 shrink-0"
+                  className="bg-slate-900 text-white font-bold text-xs px-4 py-2 rounded-lg hover:bg-slate-800 transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1 shadow-3xs"
                 >
-                  Add
+                  ＋ Add Chapter
                 </button>
               </div>
             </div>
 
             {/* Step 7.2: Custom team assignment */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3 col-span-1">
-              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest border-b border-slate-250 pb-1.5">
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4 col-span-1 md:col-span-3 text-left animate-in fade-in duration-200">
+              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest border-b border-slate-200/80 pb-2">
                 Team Role Assignment
               </h4>
 
-              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+              {/* Roles list in full-width responsive grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[350px] overflow-y-auto pr-1">
                 {project.preProduction.teamAssignments.map((assignment, idx) => (
-                  <div key={idx} className="bg-white p-2 border rounded-lg flex flex-col gap-1">
-                    <span className="text-[9px] font-extrabold text-slate-400 uppercase leading-none">{assignment.role}</span>
+                  <div key={idx} className="bg-white p-3 border border-slate-200/80 rounded-xl shadow-3xs flex flex-col gap-1.5 hover:border-slate-350 transition-all">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-extrabold text-blue-500 bg-blue-50/50 border border-blue-100/30 px-1.5 py-0.5 rounded uppercase leading-none tracking-wider">
+                        {assignment.role}
+                      </span>
+                      {deletingTeamRoleIdx === idx ? (
+                        <div className="flex items-center gap-1 bg-red-50 border border-red-150 rounded px-1 animate-in fade-in zoom-in-95 duration-100">
+                          <span className="text-[8px] font-extrabold text-red-700 px-0.5">Delete?</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateProject(draft => {
+                                draft.preProduction.teamAssignments = draft.preProduction.teamAssignments.filter((_, i) => i !== idx);
+                              });
+                              setDeletingTeamRoleIdx(null);
+                            }}
+                            className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[8px] px-1 rounded transition-all"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeletingTeamRoleIdx(null)}
+                            className="text-slate-500 hover:text-slate-800 font-extrabold text-[8px] bg-white border border-slate-205 px-1 rounded transition-all"
+                          >
+                            No
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setDeletingTeamRoleIdx(idx)}
+                          className="text-slate-300 hover:text-red-500 hover:bg-red-50 w-4 h-4 rounded flex items-center justify-center font-bold text-xs cursor-pointer"
+                          title="Remove role assignment"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={assignment.employeeName}
                       onChange={(e) => updateProject(draft => {
                         draft.preProduction.teamAssignments[idx].employeeName = e.target.value;
                       })}
-                      className="text-xs font-semibold text-slate-700 bg-transparent py-0.5"
+                      className="text-xs font-semibold text-slate-800 bg-transparent py-1 outline-none border-b border-transparent focus:border-slate-200 rounded px-1 w-full"
                       placeholder="Assign Staff Name"
                     />
                   </div>
@@ -2437,22 +2589,28 @@ export default function PhaseDetailForm({
               </div>
 
               {/* Add Custom assignment form */}
-              <div className="space-y-1.5 pt-1.5">
-                <div className="grid grid-cols-2 gap-1">
-                  <input
-                    type="text"
-                    placeholder="Custom Role"
-                    value={newTeamRole}
-                    onChange={e => setNewTeamRole(e.target.value)}
-                    className="text-xs bg-white border rounded px-2 py-1.5"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Staff Member"
-                    value={newTeamName}
-                    onChange={e => setNewTeamName(e.target.value)}
-                    className="text-xs bg-white border rounded px-2 py-1.5"
-                  />
+              <div className="pt-3.5 border-t border-slate-200/50 flex flex-col sm:flex-row gap-3 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 w-full">
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">Custom Role</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Lead Proofreader"
+                      value={newTeamRole}
+                      onChange={e => setNewTeamRole(e.target.value)}
+                      className="text-xs bg-white border hover:border-slate-300 focus:border-slate-400 rounded-lg px-2.5 py-2 w-full outline-none font-medium text-slate-700 shadow-3xs transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">Staff Member</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Jane Doe"
+                      value={newTeamName}
+                      onChange={e => setNewTeamName(e.target.value)}
+                      className="text-xs bg-white border hover:border-slate-300 focus:border-slate-400 rounded-lg px-2.5 py-2 w-full outline-none font-medium text-slate-700 shadow-3xs transition-all"
+                    />
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -2467,7 +2625,7 @@ export default function PhaseDetailForm({
                     setNewTeamRole('');
                     setNewTeamName('');
                   }}
-                  className="bg-slate-900 text-white font-bold text-xs py-1.5 w-full rounded hover:bg-slate-850"
+                  className="bg-slate-900 text-white font-bold text-xs py-2 px-4 rounded-lg hover:bg-slate-800 transition-all cursor-pointer shadow-3xs h-9.5 shrink-0 flex items-center justify-center gap-1 w-full sm:w-auto text-center"
                 >
                   ＋ Append Team Role
                 </button>
@@ -2475,105 +2633,400 @@ export default function PhaseDetailForm({
             </div>
 
             {/* Step 7.3: Chronological timeline */}
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4.5 space-y-3 col-span-1">
-              <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest border-b border-slate-250 pb-1.5">
-                Milestones & Timeline Checklist
-              </h4>
-
-              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                {project.preProduction.timeline.map((task, idx) => (
-                  <div key={task.id} className="bg-white p-2.5 border rounded-lg space-y-1 shadow-2xs">
-                    <div className="flex items-start justify-between gap-1.5">
-                      <span className="text-xs font-semibold text-slate-700 leading-tight">
-                        {task.taskName}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => updateProject(draft => {
-                          draft.preProduction.timeline = draft.preProduction.timeline.filter(t => t.id !== task.id);
-                        })}
-                        className="text-slate-350 hover:text-red-500 scale-92"
-                      >
-                        ×
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-[10px] text-slate-400">
-                      <span>PIC: {task.personInCharge}</span>
-                      <span>Due: {formatDate(task.dueDate)}</span>
-                    </div>
-
-                    <div className="flex bg-slate-50 p-1 rounded justify-between items-center text-[10px] pt-1">
-                      <span className="font-semibold text-slate-400">Status:</span>
-                      <div className="flex gap-1.5">
-                        {([TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED] as const).map(state => (
-                          <span
-                            key={state}
-                            onClick={() => updateProject(draft => {
-                              draft.preProduction.timeline[idx].status = state;
-                            })}
-                            className={`px-1 py-0.2 rounded hover:bg-slate-200 cursor-pointer ${
-                              task.status === state 
-                                ? 'bg-amber-100 font-extrabold text-amber-800' 
-                                : 'text-slate-400'
-                            }`}
-                          >
-                            {state === 'in-progress' ? 'ING' : state.toUpperCase()}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add task form */}
-              <div className="space-y-1.5 pt-1.5 border-t border-slate-200/50 mt-1.5">
-                <input
-                  type="text"
-                  placeholder="Task description e.g. Finalize Proofing"
-                  value={newTimelineTask}
-                  onChange={e => setNewTimelineTask(e.target.value)}
-                  className="text-xs w-full bg-white border rounded px-2.5 py-1.5"
-                />
-                <div className="grid grid-cols-2 gap-1">
-                  <input
-                    type="text"
-                    placeholder="PIC e.g. Sites"
-                    value={newTimelineOwner}
-                    onChange={e => setNewTimelineOwner(e.target.value)}
-                    className="text-xs bg-white border rounded px-2 py-1.5"
-                  />
-                  <input
-                    type="date"
-                    value={newTimelineDate}
-                    onChange={e => setNewTimelineDate(e.target.value)}
-                    className="text-xs bg-white border rounded px-2 py-1.5 text-slate-600"
-                  />
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4 col-span-1 md:col-span-3 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-3">
+                <div>
+                  <h4 className="text-xs font-extrabold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                    <Calendar size={13} className="text-slate-400" />
+                    Milestones & Gantt Chart Timeline
+                  </h4>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Visually schedule pre-production workflows, design sprints, and chapters deadline spreads.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!newTimelineTask.trim()) return alert('Please input task details');
-                    updateProject(draft => {
-                      draft.preProduction.timeline.push({
-                        id: 'task-' + Date.now(),
-                        taskName: newTimelineTask.trim(),
-                        personInCharge: newTimelineOwner || 'Carlos Ruiz',
-                        dueDate: newTimelineDate || '2026-05-30',
-                        status: TaskStatus.TODO
-                      });
-                    });
-                    setNewTimelineTask('');
-                    setNewTimelineOwner('');
-                    setNewTimelineDate('');
-                  }}
-                  className="bg-slate-900 text-white font-bold text-xs py-1.5 w-full rounded hover:bg-slate-850"
-                >
-                  ＋ Schedule Milestone
-                </button>
+                <div className="flex items-center gap-2.5 text-[10px] font-extrabold text-slate-500">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-md bg-slate-200 inline-block border border-slate-300"></span> TODO</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-md bg-amber-400 inline-block"></span> IN PROGRESS</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-md bg-emerald-500 inline-block"></span> COMPLETED</span>
+                </div>
               </div>
 
+              <div className="space-y-5 w-full">
+                
+                {/* Row 1: Add Milestone */}
+                <div className="bg-white border border-slate-150 rounded-xl p-4 shadow-3xs">
+                  <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2.5">Add Milestone</h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Task Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Finalize Proofing"
+                        value={newTimelineTask}
+                        onChange={e => setNewTimelineTask(e.target.value)}
+                        className="text-xs w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:bg-white rounded-lg px-2.5 py-1.5 outline-none font-medium text-slate-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">PIC (Person in Charge)</label>
+                      <select
+                        value={newTimelineOwner}
+                        onChange={e => setNewTimelineOwner(e.target.value)}
+                        className="text-xs w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:bg-white rounded-lg px-2.5 py-[7px] outline-none font-medium text-slate-800 transition-all cursor-pointer"
+                      >
+                        <option value="">-- Choose Assigned Team --</option>
+                        {project.preProduction.teamAssignments?.map((ta: any, i: number) => {
+                          const optionText = ta.employeeName && ta.role 
+                            ? `${ta.employeeName} (${ta.role})`
+                            : ta.employeeName || ta.role || `Teammate ${i + 1}`;
+                          const optionVal = ta.employeeName || ta.role || `Teammate ${i + 1}`;
+                          return (
+                            <option key={i} value={optionVal}>
+                              {optionText}
+                            </option>
+                          );
+                        })}
+                        {/* Always available defaults */}
+                        <option value="Carlos Ruiz">Carlos Ruiz (Manager)</option>
+                        <option value="Luqman Hakim Arifin">Luqman Hakim Arifin (Publisher)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={newTimelineStartDate}
+                        onChange={e => setNewTimelineStartDate(e.target.value)}
+                        className="text-xs w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:bg-white rounded-lg px-2.5 py-1.5 outline-none text-slate-605 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Due Date *</label>
+                      <input
+                        type="date"
+                        value={newTimelineDate}
+                        onChange={e => setNewTimelineDate(e.target.value)}
+                        className="text-xs w-full bg-slate-50 hover:bg-slate-100/50 border border-slate-200 focus:bg-white rounded-lg px-2.5 py-1.5 outline-none text-slate-650 font-mono"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!newTimelineTask.trim()) return alert('Please input task details');
+                        updateProject(draft => {
+                          draft.preProduction.timeline.push({
+                            id: 'task-' + Date.now(),
+                            taskName: newTimelineTask.trim(),
+                            personInCharge: newTimelineOwner.trim() || 'Carlos Ruiz',
+                            dueDate: newTimelineDate || '2026-05-30',
+                            startDate: newTimelineStartDate || undefined,
+                            status: TaskStatus.TODO
+                          });
+                        });
+                        setNewTimelineTask('');
+                        setNewTimelineOwner('');
+                        setNewTimelineDate('');
+                        setNewTimelineStartDate('');
+                      }}
+                      className="bg-slate-900 text-white font-bold text-xs py-1.5 px-4 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer h-8 flex items-center justify-center gap-1 w-full"
+                    >
+                      ＋ Add Milestone
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2: Gantt Visual Workspace */}
+                <div className="w-full bg-white border rounded-xl p-4 shadow-3xs overflow-hidden">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <h5 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Gantt Visual Workspace</h5>
+                    <span className="text-[9px] text-slate-400 font-mono font-bold bg-slate-50 px-2 py-0.5 rounded border border-slate-100">Interactive Timeline Scale</span>
+                  </div>
+
+                  {project.preProduction.timeline.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-slate-350 space-y-1">
+                      <Clock size={24} className="text-slate-300" />
+                      <p className="text-xs font-semibold text-slate-450">Empty pre-production schedule.</p>
+                      <p className="text-[10px] text-slate-400">Add milestones above to populate the Gantt chart automatically.</p>
+                    </div>
+                  ) : (() => {
+                    const tasks = project.preProduction.timeline;
+                    const getTimestamp = (dateStr: string) => {
+                      const d = new Date(dateStr);
+                      return isNaN(d.getTime()) ? Date.now() : d.getTime();
+                    };
+
+                    const parsedTasks = tasks.map(t => {
+                      const endMs = getTimestamp(t.dueDate);
+                      const startMs = t.startDate ? getTimestamp(t.startDate) : endMs - (6 * 24 * 60 * 60 * 1000);
+                      return { ...t, startMs, endMs };
+                    });
+
+                    let minMs = Math.min(...parsedTasks.map(t => t.startMs));
+                    let maxMs = Math.max(...parsedTasks.map(t => t.endMs));
+
+                    // Add nice padded borders around the tasks schedule
+                    const paddedMargin = 24 * 60 * 60 * 1000 * 2; // 2 days padding
+                    minMs -= paddedMargin;
+                    maxMs += paddedMargin;
+
+                    const totalDurationMs = maxMs - minMs || 1;
+
+                    // Compute 5 dividing grid dates to display
+                    const gridSteps = 5;
+                    const headers: Date[] = [];
+                    for (let i = 0; i <= gridSteps; i++) {
+                      headers.push(new Date(minMs + (totalDurationMs * (i / gridSteps))));
+                    }
+
+                    return (
+                      <div className="mt-3 overflow-x-auto">
+                        <div className="min-w-[550px] text-left">
+                          {/* Calendar Grid Title Marks */}
+                          <div className="relative h-7 border-b border-slate-150 flex items-end pb-1 text-[9px] font-mono font-extrabold text-slate-400">
+                            <span className="w-2/5 shrink-0 uppercase tracking-widest pl-1 font-sans text-slate-400">Task Title & Staff PIC</span>
+                            <div className="w-3/5 relative h-full">
+                              {headers.map((dt, i) => {
+                                const leftPercent = (i / gridSteps) * 100;
+                                return (
+                                  <div 
+                                    key={i} 
+                                    className="absolute -translate-x-1/2 flex flex-col items-center justify-end h-full font-bold"
+                                    style={{ left: `${leftPercent}%` }}
+                                  >
+                                    <span>{dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    <div className="w-px h-1 bg-slate-200"></div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Task visual lanes */}
+                          <div className="relative divide-y divide-slate-100 mt-1">
+                            {/* Grid vertical tracks */}
+                            <div className="absolute inset-y-0 left-[40%] right-0 pointer-events-none flex justify-between">
+                              {headers.map((_, i) => {
+                                const leftPercent = (i / gridSteps) * 100;
+                                return (
+                                  <div 
+                                    key={i} 
+                                    className="w-px h-full bg-slate-100 border-dashed"
+                                    style={{ position: 'absolute', left: `calc(40% + ${leftPercent * 0.6}%)` }}
+                                  ></div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Task lanes rows */}
+                            {parsedTasks.map((t, idx) => {
+                              const leftPct = ((t.startMs - minMs) / totalDurationMs) * 100;
+                              const widthPct = ((t.endMs - t.startMs) / totalDurationMs) * 100;
+
+                              let barColor = 'bg-slate-200 border-slate-300 text-slate-700 hover:bg-slate-300';
+                              if (t.status === TaskStatus.COMPLETED) {
+                                barColor = 'bg-emerald-500 border-emerald-600 text-white hover:bg-emerald-605';
+                              } else if (t.status === TaskStatus.IN_PROGRESS) {
+                                barColor = 'bg-amber-400 border-amber-500 text-slate-900 hover:bg-amber-450';
+                              }
+
+                              const isEditing = editingTimelineTaskId === t.id;
+
+                              return (
+                                <div key={t.id} className="relative flex flex-col justify-center border-b border-slate-100 last:border-b-0 py-1.5 transition-all">
+                                  <div className="flex items-center h-10 hover:bg-slate-50/70 transition-colors w-full">
+                                    {/* Info name */}
+                                    <div className="w-[40%] shrink-0 pr-3 flex flex-col justify-center pl-1 z-10 truncate text-left">
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        <span className="text-[11px] font-bold text-slate-705 truncate" title={t.taskName}>
+                                          {t.taskName}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingTimelineTaskId(isEditing ? null : t.id)}
+                                          className={`p-0.5 rounded transition-all hover:bg-slate-150 ${isEditing ? 'text-blue-500 bg-slate-100 scale-105 font-bold' : 'text-slate-450'}`}
+                                          title="Adjust Dates & Details"
+                                        >
+                                          <PenTool size={10} />
+                                        </button>
+                                      </div>
+                                      <span className="text-[9px] text-slate-400 font-semibold truncate leading-tight">
+                                        PIC: {t.personInCharge} | {t.startDate ? formatDate(t.startDate) : 'Auto'} to {formatDate(t.dueDate)}
+                                      </span>
+                                    </div>
+
+                                    {/* Bar container */}
+                                    <div className="w-[60%] relative h-full flex items-center z-10">
+                                      <div 
+                                        className={`absolute h-5.5 rounded-lg border px-2.5 flex items-center justify-between text-[8px] font-extrabold select-none transition-all duration-300 shadow-3xs cursor-pointer ${barColor}`}
+                                        style={{ 
+                                          left: `${Math.max(0, Math.min(96, leftPct))}%`, 
+                                          width: `${Math.max(4, Math.min(100 - leftPct, widthPct))}%` 
+                                        }}
+                                        onClick={() => setEditingTimelineTaskId(isEditing ? null : t.id)}
+                                        title={`Adjust dates for ${t.taskName} (Range: ${t.startDate ? formatDate(t.startDate) : 'Auto'} to ${formatDate(t.dueDate)}) | Click to adjust`}
+                                      >
+                                        {widthPct > 15 && (
+                                          <span className="truncate pr-1">
+                                            {t.status.toUpperCase()}
+                                          </span>
+                                        )}
+                                        <span className="w-1 h-1 bg-white/70 rounded-full shrink-0"></span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Custom Inline Schedule Tuner Card */}
+                                  {isEditing && (
+                                    <div className="mx-1 mt-1.5 mb-2 bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-3 shadow-3xs z-20 text-left">
+                                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                                        <span className="text-[10px] font-extrabold text-slate-550 uppercase tracking-wider flex items-center gap-1">
+                                          <PenTool size={10} className="text-blue-500 font-bold" />
+                                          Adjust Schedule & Details
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-[9px] text-slate-400 font-medium">Real-time update</span>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setEditingTimelineTaskId(null)}
+                                            className="text-slate-500 hover:text-slate-800 font-extrabold text-[10px] bg-white border border-slate-200 hover:border-slate-300 px-2 py-0.5 rounded transition-all"
+                                          >
+                                            Done
+                                          </button>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                                        <div>
+                                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">Task Name</label>
+                                          <input 
+                                            type="text"
+                                            value={t.taskName}
+                                            onChange={(e) => updateProject(draft => {
+                                              const actualIdx = draft.preProduction.timeline.findIndex((item: any) => item.id === t.id);
+                                              if (actualIdx !== -1) {
+                                                draft.preProduction.timeline[actualIdx].taskName = e.target.value;
+                                              }
+                                            })}
+                                            className="text-xs w-full bg-white hover:border-slate-350 border border-slate-200 focus:border-slate-400 rounded-lg px-2.5 py-1.5 outline-none font-medium text-slate-800 transition-all shadow-3xs"
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">PIC Owner</label>
+                                          <input 
+                                            type="text"
+                                            value={t.personInCharge}
+                                            onChange={(e) => updateProject(draft => {
+                                              const actualIdx = draft.preProduction.timeline.findIndex((item: any) => item.id === t.id);
+                                              if (actualIdx !== -1) {
+                                                draft.preProduction.timeline[actualIdx].personInCharge = e.target.value;
+                                              }
+                                            })}
+                                            className="text-xs w-full bg-white hover:border-slate-350 border border-slate-200 focus:border-slate-400 rounded-lg px-2.5 py-1.5 outline-none font-medium text-slate-800 transition-all shadow-3xs"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">
+                                            Start Date
+                                          </label>
+                                          <input 
+                                            type="date"
+                                            value={t.startDate || ''}
+                                            onChange={(e) => updateProject(draft => {
+                                              const actualIdx = draft.preProduction.timeline.findIndex((item: any) => item.id === t.id);
+                                              if (actualIdx !== -1) {
+                                                draft.preProduction.timeline[actualIdx].startDate = e.target.value || undefined;
+                                              }
+                                            })}
+                                            className="text-xs w-full bg-white hover:border-slate-350 border border-slate-200 focus:border-slate-400 rounded-lg px-2 py-1 outline-none text-slate-700 font-mono transition-all shadow-3xs"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">
+                                            Due Date
+                                          </label>
+                                          <input 
+                                            type="date"
+                                            value={t.dueDate}
+                                            onChange={(e) => updateProject(draft => {
+                                              const actualIdx = draft.preProduction.timeline.findIndex((item: any) => item.id === t.id);
+                                              if (actualIdx !== -1) {
+                                                draft.preProduction.timeline[actualIdx].dueDate = e.target.value || '2026-05-30';
+                                              }
+                                            })}
+                                            className="text-xs w-full bg-white hover:border-slate-350 border border-slate-200 focus:border-slate-400 rounded-lg px-2 py-1 outline-none text-slate-700 font-mono transition-all shadow-3xs"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wide block mb-1">Status</label>
+                                          <select
+                                            value={t.status}
+                                            onChange={(e) => updateProject(draft => {
+                                              const actualIdx = draft.preProduction.timeline.findIndex((item: any) => item.id === t.id);
+                                              if (actualIdx !== -1) {
+                                                draft.preProduction.timeline[actualIdx].status = e.target.value as TaskStatus;
+                                              }
+                                            })}
+                                            className="text-xs w-full bg-white border border-slate-200 focus:border-slate-400 rounded-lg px-2.5 py-1.5 outline-none font-bold text-slate-700 transition-all shadow-3xs"
+                                          >
+                                            <option value={TaskStatus.TODO}>TODO</option>
+                                            <option value={TaskStatus.IN_PROGRESS}>IN PROGRESS</option>
+                                            <option value={TaskStatus.COMPLETED}>COMPLETED</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-200/60 mt-1">
+                                        {deletingMilestoneId === t.id ? (
+                                          <div className="flex items-center gap-1.5 bg-red-50 border border-red-100 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-150">
+                                            <span className="text-[9px] font-bold text-red-700 px-1">Are you sure?</span>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                updateProject(draft => {
+                                                  draft.preProduction.timeline = draft.preProduction.timeline.filter((item: any) => item.id !== t.id);
+                                                });
+                                                setDeletingMilestoneId(null);
+                                                setEditingTimelineTaskId(null);
+                                              }}
+                                              className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[9px] px-2 py-0.5 rounded transition-all shadow-3xs"
+                                            >
+                                              Yes, Delete
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setDeletingMilestoneId(null)}
+                                              className="text-slate-500 hover:text-slate-800 font-extrabold text-[9px] bg-white border border-slate-200 px-2 py-0.5 rounded transition-all shadow-3xs"
+                                            >
+                                              No
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => setDeletingMilestoneId(t.id)}
+                                            className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1 rounded transition-colors"
+                                          >
+                                            Delete Milestone
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         )}
