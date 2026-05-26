@@ -752,26 +752,14 @@ export default function App() {
           {/* Global Reset and additions triggers */}
           <div className="flex items-center gap-2">
             {userProfile?.role === 'admin' && (
-              <>
-                <button
-                  onClick={handleResetData}
-                  type="button"
-                  className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 text-xs font-semibold border border-transparent hover:border-slate-200/70 transition-all cursor-pointer"
-                  title="Reset data store back to default presets"
-                >
-                  <Undo2 size={13} />
-                  Reset Demo
-                </button>
-
-                <button
-                  onClick={() => setShowCreateForm(prev => !prev)}
-                  type="button"
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-                >
-                  <Plus size={14} />
-                  New Book Project
-                </button>
-              </>
+              <button
+                onClick={() => setShowCreateForm(prev => !prev)}
+                type="button"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+              >
+                <Plus size={14} />
+                New Book Project
+              </button>
             )}
 
             {/* User Profile Card and Log Out button */}

@@ -1005,7 +1005,7 @@ export default function PhaseDetailForm({
             {/* BRIEF DOCUMENTS EXTERNAL LINKS */}
             <div className="space-y-2 border-t border-slate-200/60 pt-4">
               <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-                Requirement Brief Documents (External Links)
+                Requirement Brief Documents
               </label>
 
               <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
@@ -1192,7 +1192,7 @@ export default function PhaseDetailForm({
             {/* CREATIVE CONCEPT DOCUMENTS EXTERNAL LINKS */}
             <div className="space-y-2 border-t border-slate-200/60 pt-4">
               <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-                Creative Concept Document(s) (External Links)
+                Creative Concept Document(s)
               </label>
 
               <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
@@ -1721,7 +1721,7 @@ export default function PhaseDetailForm({
               <div>
                 <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                   <Link size={13} className="text-slate-500" />
-                  Proposal Document(s) (External Links)
+                  Proposal Document(s)
                 </h5>
                 <p className="text-[10px] text-slate-400 mt-0.5">
                   Input direct external link URLs (e.g. Google Drive, estimation spreadsheets, etc.).
@@ -2030,7 +2030,7 @@ export default function PhaseDetailForm({
                 <div>
                   <h5 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                     <Link size={13} className="text-slate-550" />
-                    Contract Draft Document(s) (External Links)
+                    Contract Draft Document(s)
                   </h5>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     Input preliminary draft URLs, reference agreements, or design contract revision links.
@@ -2171,7 +2171,7 @@ export default function PhaseDetailForm({
                 <div>
                   <h5 className="text-xs font-extrabold text-[#0c6b54] uppercase tracking-wider flex items-center gap-1.5 font-display">
                     <Link size={13} className="text-[#0c6b54]" />
-                    Signed Final Contract Document(s) (External Links)
+                    Signed Final Contract Document(s)
                   </h5>
                   <p className="text-[10px] text-slate-400 mt-0.5">
                     Input direct URLs to executed physical signed & stamped agreements.
