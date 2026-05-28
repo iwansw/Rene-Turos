@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Undo2, BookOpen, Clock, CheckCircle2, ChevronRight, DollarSign, User, 
-  HelpCircle, Trash2, Search, Filter, ShieldCheck, Mail, Phone, Calendar, Sparkles, AlertCircle, LogOut
+  HelpCircle, Trash2, Search, Filter, ShieldCheck, Mail, Phone, Calendar, Sparkles, AlertCircle, LogOut,
+  Edit, Edit2, Settings, X, Key, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './components/Logo';
@@ -92,6 +93,38 @@ export default function App() {
   const [newRegDisplayName, setNewRegDisplayName] = useState<string>('');
   const [newRegRole, setNewRegRole] = useState<string>('user');
   const [regStatus, setRegStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // Admin selected tab inside the console
+  const [adminTab, setAdminTab] = useState<'users' | 'projects'>('users');
+
+  // Member editing state
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editUserDisplayName, setEditUserDisplayName] = useState<string>('');
+  const [editUserPassword, setEditUserPassword] = useState<string>('');
+  const [editUserRole, setEditUserRole] = useState<string>('user');
+  const [editUserPhotoURL, setEditUserPhotoURL] = useState<string>('');
+
+  // Book project editing state
+  const [editingProject, setEditingProject] = useState<any | null>(null);
+  const [editProjectName, setEditProjectName] = useState<string>('');
+  const [editProjectClientName, setEditProjectClientName] = useState<string>('');
+  const [editProjectClientEmail, setEditProjectClientEmail] = useState<string>('');
+  const [editProjectClientPhone, setEditProjectClientPhone] = useState<string>('');
+  const [editProjectPhaseIndex, setEditProjectPhaseIndex] = useState<number>(0);
+
+  // User Dropdown and Profile Modal settings
+  const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
+  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
+  const [newProfileDisplayName, setNewProfileDisplayName] = useState<string>('');
+  const [newProfilePassword, setNewProfilePassword] = useState<string>('');
+  const [newProfilePhotoURL, setNewProfilePhotoURL] = useState<string>('');
+
+  // Custom confirmation modal target
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'user' | 'project';
+    id: string;
+    displayName: string;
+  } | null>(null);
 
   // Quick search and filtering states
   const [searchQuery, setSearchQuery] = useState('');
@@ -234,6 +267,14 @@ export default function App() {
     };
   }, [userProfile?.uid]);
 
+  // Sync profile details to profile settings modal fields
+  useEffect(() => {
+    if (userProfile) {
+      setNewProfileDisplayName(userProfile.displayName || '');
+      setNewProfilePhotoURL(userProfile.photoURL || '');
+    }
+  }, [userProfile]);
+
   // Hydrate empty profile with beautiful demo project records
   const seedInitialProjects = async (uid: string) => {
     if (isSandbox) {
@@ -321,6 +362,220 @@ export default function App() {
     } catch (err: any) {
       console.error("Error creating user profile in Firestore:", err);
       setRegStatus({ type: 'error', message: err.message || 'Error occurred registering that colleague.' });
+    }
+  };
+
+  // Admin updates another teammate's profile
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setRegStatus(null);
+
+    const targetUsername = editingUser.username;
+    if (!editUserDisplayName.trim()) {
+      setRegStatus({ type: 'error', message: 'Display Name is required.' });
+      return;
+    }
+    if (editUserPassword.trim() && editUserPassword.trim().length < 6) {
+      setRegStatus({ type: 'error', message: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    try {
+      const userDocRef = doc(db, 'users', targetUsername);
+      const updatedData: any = {
+        displayName: editUserDisplayName.trim(),
+        role: editUserRole,
+      };
+      if (editUserPassword.trim()) {
+        updatedData.password = editUserPassword.trim();
+      }
+      if (editUserPhotoURL !== undefined) {
+        updatedData.photoURL = editUserPhotoURL;
+      }
+
+      await setDoc(userDocRef, updatedData, { merge: true });
+
+      setRegStatus({ type: 'success', message: `Teammate colleague "${targetUsername}" profile was updated successfully!` });
+      
+      // Update local storage
+      const savedUsers = localStorage.getItem('ReneTuros_LocalUsers');
+      if (savedUsers) {
+        const parsed = JSON.parse(savedUsers);
+        const updated = parsed.map((u: any) => u.username === targetUsername ? { ...u, ...updatedData } : u);
+        localStorage.setItem('ReneTuros_LocalUsers', JSON.stringify(updated));
+      }
+
+      // If updating oneself
+      if (userProfile && userProfile.username === targetUsername) {
+        const nextProfile = { ...userProfile, ...updatedData };
+        setUserProfile(nextProfile);
+        localStorage.setItem('ReneTuros_ActiveUserSession', JSON.stringify(nextProfile));
+      }
+
+      setEditingUser(null);
+      setEditUserDisplayName('');
+      setEditUserPassword('');
+      setEditUserRole('user');
+      setEditUserPhotoURL('');
+    } catch (err: any) {
+      console.error("Error updating user profile:", err);
+      setRegStatus({ type: 'error', message: err.message || 'Error occurred updating colleague profile.' });
+    }
+  };
+
+  // Admin deletes a teammate's profile
+  const handleDeleteUser = (targetUsername: string) => {
+    if (userProfile && userProfile.username === targetUsername) {
+      alert("You cannot delete your own active administrator account!");
+      return;
+    }
+    setDeleteTarget({
+      type: 'user',
+      id: targetUsername,
+      displayName: targetUsername,
+    });
+  };
+
+  const executeDeleteUser = async (targetUsername: string) => {
+    setRegStatus(null);
+    try {
+      const userDocRef = doc(db, 'users', targetUsername);
+      await deleteDoc(userDocRef);
+
+      setRegStatus({ type: 'success', message: `Colleague "${targetUsername}" has been removed from system registry.` });
+
+      // Update local storage
+      const savedUsers = localStorage.getItem('ReneTuros_LocalUsers');
+      if (savedUsers) {
+        const parsed = JSON.parse(savedUsers);
+        const filtered = parsed.filter((u: any) => u.username !== targetUsername);
+        localStorage.setItem('ReneTuros_LocalUsers', JSON.stringify(filtered));
+      }
+    } catch (err: any) {
+      console.error("Error deleting user:", err);
+      setRegStatus({ type: 'error', message: err.message || 'Error occurred deleting colleague.' });
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  // User profile editor handler
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userProfile) return;
+
+    try {
+      const userDocRef = doc(db, 'users', userProfile.username);
+      const updatedData: any = {
+        displayName: newProfileDisplayName.trim() || userProfile.displayName,
+      };
+      if (newProfilePassword.trim()) {
+        if (newProfilePassword.trim().length < 6) {
+          alert("Password must be at least 6 characters.");
+          return;
+        }
+        updatedData.password = newProfilePassword.trim();
+      }
+      if (newProfilePhotoURL !== undefined) {
+        updatedData.photoURL = newProfilePhotoURL;
+      }
+
+      await setDoc(userDocRef, updatedData, { merge: true });
+
+      const updatedProfile = { ...userProfile, ...updatedData };
+      setUserProfile(updatedProfile);
+      localStorage.setItem('ReneTuros_ActiveUserSession', JSON.stringify(updatedProfile));
+
+      // Also sync userList back
+      setUsersList(prev => prev.map(u => u.username === userProfile.username ? { ...u, ...updatedData } : u));
+
+      setNewProfilePassword('');
+      setShowProfileModal(false);
+      alert("Your corporate profile status has been updated successfully!");
+    } catch (err: any) {
+      console.error("Error updating personal profile:", err);
+      alert("Failed to update profile: " + err.message);
+    }
+  };
+
+  const handleProfilePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB Limit
+      alert("Profile image size should be less than 2MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setNewProfilePhotoURL(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAdminProfilePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB Limit
+      alert("Profile image size should be less than 2MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setEditUserPhotoURL(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Admin updates a Book Project
+  const handleUpdateProjectAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    setRegStatus(null);
+
+    if (!editProjectName.trim() || !editProjectClientName.trim()) {
+      setRegStatus({ type: 'error', message: 'Project Name and Client Name are required.' });
+      return;
+    }
+
+    try {
+      const projRef = doc(db, 'projects', editingProject.id);
+      const updatedData = {
+        projectName: editProjectName.trim(),
+        currentPhaseIndex: editProjectPhaseIndex,
+        clientContact: {
+          name: editProjectClientName.trim(),
+          email: editProjectClientEmail.trim() || 'info@client.com',
+          phone: editProjectClientPhone.trim() || '+62 811-1111-2222',
+        }
+      };
+
+      await setDoc(projRef, updatedData, { merge: true });
+
+      // Update local state list
+      const nextProjects = projects.map(p => p.id === editingProject.id ? {
+        ...p,
+        ...updatedData
+      } : p);
+      setProjects(nextProjects);
+      localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(nextProjects));
+
+      setRegStatus({ type: 'success', message: `Updated book project "${editProjectName}" successfully in Firestore.` });
+      setEditingProject(null);
+      setEditProjectName('');
+      setEditProjectClientName('');
+      setEditProjectClientEmail('');
+      setEditProjectClientPhone('');
+      setEditProjectPhaseIndex(0);
+    } catch (err: any) {
+      console.error("Error updating project in admin panel:", err);
+      setRegStatus({ type: 'error', message: err.message || 'Error occurred updating book project.' });
     }
   };
 
@@ -568,41 +823,51 @@ export default function App() {
   };
 
   // Remove a project
-  const handleDeleteProject = async (pId: string) => {
-    if (window.confirm("Are you sure you want to permanently delete this book project from the database? This is irreversible.")) {
-      if (firestoreOffline) {
-        setProjects(prev => {
-          const next = prev.filter(p => p.id !== pId);
-          localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
-          return next;
-        });
-        setSelectedProjectId((prevId) => {
-          if (prevId === pId) {
-            const remaining = projects.filter(p => p.id !== pId);
-            return remaining.length > 0 ? remaining[0].id : '';
-          }
-          return prevId;
-        });
-        return;
-      }
-      try {
-        await deleteDoc(doc(db, 'projects', pId));
-      } catch (err) {
-        console.warn("Could not delete project online, updating local storage:", err);
-        setFirestoreOffline(true);
-        setProjects(prev => {
-          const next = prev.filter(p => p.id !== pId);
-          localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
-          return next;
-        });
-        setSelectedProjectId((prevId) => {
-          if (prevId === pId) {
-            const remaining = projects.filter(p => p.id !== pId);
-            return remaining.length > 0 ? remaining[0].id : '';
-          }
-          return prevId;
-        });
-      }
+  const handleDeleteProject = (pId: string) => {
+    const proj = projects.find(p => p.id === pId);
+    setDeleteTarget({
+      type: 'project',
+      id: pId,
+      displayName: proj ? proj.projectName : 'Selected Project',
+    });
+  };
+
+  const executeDeleteProject = async (pId: string) => {
+    if (firestoreOffline) {
+      setProjects(prev => {
+        const next = prev.filter(p => p.id !== pId);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+        return next;
+      });
+      setSelectedProjectId((prevId) => {
+        if (prevId === pId) {
+          const remaining = projects.filter(p => p.id !== pId);
+          return remaining.length > 0 ? remaining[0].id : '';
+        }
+        return prevId;
+      });
+      setDeleteTarget(null);
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'projects', pId));
+    } catch (err) {
+      console.warn("Could not delete project online, updating local storage:", err);
+      setFirestoreOffline(true);
+      setProjects(prev => {
+        const next = prev.filter(p => p.id !== pId);
+        localStorage.setItem('ReneTuros_Offline_Projects', JSON.stringify(next));
+        return next;
+      });
+      setSelectedProjectId((prevId) => {
+        if (prevId === pId) {
+          const remaining = projects.filter(p => p.id !== pId);
+          return remaining.length > 0 ? remaining[0].id : '';
+        }
+        return prevId;
+      });
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
@@ -715,7 +980,7 @@ export default function App() {
 
         <footer className="w-full max-w-md mx-auto flex items-center justify-between border-t border-slate-200/60 pt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest font-mono">
           <span>&copy; {new Date().getFullYear()} Rene Turos Group</span>
-          <span>v1.2.0</span>
+          <span>v1.4.15</span>
         </footer>
       </div>
     );
@@ -778,29 +1043,87 @@ export default function App() {
                 </button>
               )}
 
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/60 rounded-xl p-1 pr-3 select-none">
-                <div className="w-6.5 h-6.5 text-[10px] bg-slate-950 border border-slate-200/50 text-white flex items-center justify-center font-extrabold rounded-lg uppercase shadow-sm">
-                  {(userProfile?.displayName || userProfile?.username || 'U').charAt(0)}
-                </div>
-                <div className="flex flex-col max-w-[90px] xl:max-w-[125px]">
-                  <span className="text-[10px] font-black text-slate-700 leading-none truncate">{userProfile?.displayName || userProfile?.username || 'Author'}</span>
-                  <span className="text-[8px] font-semibold text-emerald-700 mt-0.5 leading-none truncate uppercase tracking-wider">{userProfile?.role || 'Staff'}</span>
-                </div>
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(prev => !prev)}
+                  type="button"
+                  className="flex items-center gap-2 bg-slate-50 border border-slate-200/60 hover:border-slate-350 rounded-xl p-1 pr-3 cursor-pointer select-none transition-all"
+                >
+                  <div className="w-6.5 h-6.5 text-[10px] bg-slate-950 border border-slate-200/50 text-white flex items-center justify-center font-extrabold rounded-lg uppercase shadow-sm overflow-hidden">
+                    {userProfile?.photoURL ? (
+                      <img src={userProfile.photoURL} alt={userProfile.displayName} className="w-full h-full object-cover" />
+                    ) : (
+                      (userProfile?.displayName || userProfile?.username || 'U').charAt(0)
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left max-w-[90px] xl:max-w-[125px]">
+                    <span className="text-[10px] font-black text-slate-700 leading-none truncate">{userProfile?.displayName || userProfile?.username || 'Author'}</span>
+                    <span className="text-[8px] font-semibold text-emerald-700 mt-0.5 leading-none truncate uppercase tracking-wider">{userProfile?.role || 'Staff'}</span>
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {showUserMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-2 w-48 bg-white border-2 border-slate-950 rounded-xl shadow-xl z-25 p-2 font-sans overflow-hidden"
+                      >
+                        <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                          <p className="text-[9px] font-extrabold text-slate-400 tracking-wider uppercase">Signed as</p>
+                          <p className="text-xs font-black text-slate-800 truncate">{userProfile?.displayName || 'Teammate'}</p>
+                          <p className="text-[9px] font-mono text-slate-450 mt-0.5">@{userProfile?.username}</p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            setShowProfileModal(true);
+                          }}
+                          type="button"
+                          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                        >
+                          <User size={13} />
+                          <span>My Profile Settings</span>
+                        </button>
+
+                        {userProfile?.role === 'admin' && (
+                          <button
+                            onClick={() => {
+                              setShowUserMenu(false);
+                              setShowAdminPanel(true);
+                            }}
+                            type="button"
+                            className="w-full text-left px-3 py-1.5 hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                          >
+                            <ShieldCheck size={13} />
+                            <span>Colleague Console</span>
+                          </button>
+                        )}
+
+                        <div className="h-px bg-slate-100 my-1" />
+
+                        <button
+                          onClick={() => {
+                            setShowUserMenu(false);
+                            handleLogout();
+                          }}
+                          type="button"
+                          className="w-full text-left px-3 py-1.5 hover:bg-red-50 hover:text-red-700 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer border-0"
+                        >
+                          <LogOut size={13} />
+                          <span>Sign Out Session</span>
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
               </div>
 
-              <div className="hidden md:flex items-center gap-1.5 px-2 py-1 bg-emerald-50 border border-emerald-200 rounded-lg text-[9px] font-extrabold text-emerald-800 uppercase tracking-wider select-none">
-                <span className="w-1.5 h-1.5 bg-emerald-550 rounded-full" />
-                <span>Firestore Live</span>
-              </div>
 
-              <button
-                onClick={handleLogout}
-                type="button"
-                className="p-2 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 hover:text-slate-700 rounded-lg transition-all cursor-pointer"
-                title="Sign out of editorial session"
-              >
-                <LogOut size={13} />
-              </button>
             </div>
           </div>
 
@@ -1039,10 +1362,10 @@ export default function App() {
                     <div 
                       key={p.id}
                       onClick={() => setSelectedProjectId(p.id)}
-                      className={`p-3 rounded-xl border cursor-pointer select-none transition-all duration-200 relative ${
+                      className={`group p-3 rounded-xl border cursor-pointer select-none transition-all duration-200 relative ${
                         isActive
                           ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
-                          : 'bg-slate-50/50 hover:bg-slate-50 border-slate-200'
+                          : 'bg-slate-50/50 hover:bg-slate-50 border-slate-205'
                       }`}
                     >
                       {/* Genre indicator pill absolute */}
@@ -1075,17 +1398,43 @@ export default function App() {
                         </span>
                       </div>
 
-                      {/* Small actions icon (Admins only) */}
+                      {/* Small actions icons (Admins only) - Always visible for high usability */}
                       {userProfile?.role === 'admin' && (
-                        <div className="absolute right-2 top-8 flex gap-1 items-center">
+                        <div className="absolute right-2 top-8 flex gap-1.5 items-center z-10">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingProject(p);
+                              setEditProjectName(p.projectName);
+                              setEditProjectClientName(p.clientContact?.name || '');
+                              setEditProjectClientEmail(p.clientContact?.email || '');
+                              setEditProjectClientPhone(p.clientContact?.phone || '');
+                              setEditProjectPhaseIndex(p.currentPhaseIndex);
+                              setRegStatus(null);
+                              setAdminTab('projects');
+                              setShowAdminPanel(true);
+                            }}
+                            className={`p-1.5 rounded-lg shrink-0 scale-95 transition-all duration-200 outline-none cursor-pointer ${
+                              isActive 
+                                ? 'text-slate-300 hover:text-white hover:bg-white/10' 
+                                : 'text-slate-450 hover:text-slate-900 hover:bg-slate-100'
+                            }`}
+                            title="Update Book Metadata"
+                          >
+                            <Edit size={11} />
+                          </button>
+
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteProject(p.id);
                             }}
-                            className={`p-1 rounded shrink-0 scale-90 opacity-0 group-hover:opacity-100 transition-all ${
-                              isActive ? 'text-slate-500 hover:text-red-400' : 'text-slate-300 hover:text-red-500'
+                            className={`p-1.5 rounded-lg shrink-0 scale-95 transition-all duration-200 outline-none cursor-pointer ${
+                              isActive 
+                                ? 'text-slate-300 hover:text-red-400 hover:bg-white/10' 
+                                : 'text-slate-400 hover:text-red-650 hover:bg-red-50'
                             }`}
                             title="Delete Project draft"
                           >
@@ -1231,13 +1580,13 @@ export default function App() {
             © 2026 Rene Turos Group. All editorial rights reserved. Managed & monitored securely in the cloud workspace coordinate system.
           </p>
           <p className="text-[10px] text-slate-350 font-mono">
-            System build v1.4.15 • Active container port configuration 3000
+            System build v1.4.15
           </p>
         </div>
       </footer>
 
       {/* ======================================================== */}
-      {/* ADMIN PANEL - USER MANAGEMENT OVERLAY MODAL */}
+      {/* ADMIN PANEL - TWO-TAB SYSTEM CONSOLE MODAL (USERS + PROJECTS CRUD) */}
       {/* ======================================================== */}
       <AnimatePresence>
         {showAdminPanel && (
@@ -1246,157 +1595,732 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white border-2 border-slate-950 rounded-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
+              className="bg-white border-2 border-slate-950 rounded-2xl max-w-5xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
             >
               {/* Header */}
-              <div className="p-5 border-b border-slate-150 flex items-center justify-between bg-slate-50">
-                <div className="flex items-center gap-2">
-                  <div className="bg-slate-900 text-white p-2 rounded-xl">
-                    <ShieldCheck size={18} />
+              <div className="p-5 border-b border-slate-150 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-slate-900 text-white p-2.5 rounded-xl">
+                    <ShieldCheck size={20} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-slate-800 tracking-tight">System Admin User Registry</h3>
-                    <p className="text-[10px] text-slate-450 font-medium">Register and oversee authorized staff with secure workspace access.</p>
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">System Corporate Console</h3>
+                    <p className="text-[10px] text-slate-450 font-medium">Coordinate, edit, and oversee staff access registry and active book catalog records.</p>
                   </div>
                 </div>
+                
+                {/* Tabs selection triggers! */}
+                <div className="flex items-center bg-slate-200 p-1 rounded-xl self-start sm:self-auto">
+                  <button
+                    onClick={() => { setAdminTab('users'); setRegStatus(null); }}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      adminTab === 'users' 
+                        ? 'bg-white text-slate-900 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Users size={12} />
+                      <span>Colleagues & Roles ({usersList.length})</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setAdminTab('projects'); setRegStatus(null); }}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      adminTab === 'projects' 
+                        ? 'bg-white text-slate-900 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <BookOpen size={12} />
+                      <span>Projects Directory ({projects.length})</span>
+                    </div>
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => { setShowAdminPanel(false); setRegStatus(null); }}
+                  onClick={() => { 
+                    setShowAdminPanel(false); 
+                    setRegStatus(null); 
+                    setEditingUser(null);
+                    setEditingProject(null);
+                  }}
                   type="button"
-                  className="p-1 px-2.5 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold text-slate-700 cursor-pointer transition-colors"
+                  className="p-1 px-3 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-bold text-slate-700 cursor-pointer self-end sm:self-auto transition-colors"
                 >
-                  Close Panel
+                  Close Console
                 </button>
               </div>
 
-              {/* Body */}
-              <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-6 leading-relaxed">
-                {/* Left Side: Register New User */}
-                <div className="space-y-4">
-                  <div className="border-b border-slate-100 pb-2">
-                    <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Team Member</h4>
-                    <p className="text-[10px] text-slate-500 font-medium">Create a local authenticated account with customized roles.</p>
-                  </div>
-
-                  <form onSubmit={handleRegisterUser} className="space-y-3.5">
-                    {regStatus && (
-                      <div className={`p-3 rounded-xl text-xs font-bold ${
-                        regStatus.type === 'success' 
-                          ? 'bg-emerald-50 border border-emerald-150 text-emerald-800' 
-                          : 'bg-red-50 border border-red-150 text-red-800'
-                      }`}>
-                        {regStatus.message}
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Full Display Name</label>
-                      <input
-                        type="text"
-                        value={newRegDisplayName}
-                        onChange={(e) => setNewRegDisplayName(e.target.value)}
-                        placeholder="e.g. Maria DB"
-                        className="w-full bg-slate-50 border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850 focus:bg-white"
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Username Handle</label>
-                      <div className="flex items-center">
-                        <input
-                          type="text"
-                          value={newRegUsername}
-                          onChange={(e) => setNewRegUsername(e.target.value)}
-                          placeholder="e.g. maria"
-                          className="flex-1 bg-slate-50 border border-slate-250 rounded-l-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850 focus:bg-white"
-                          required
-                        />
-                        <span className="bg-slate-100 border border-l-0 border-slate-250 px-3 py-2 rounded-r-lg text-[10px] font-mono text-slate-500 select-none">
-                          @editorial.local
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Secure Access Password (min 6 chars)</label>
-                      <input
-                        type="password"
-                        value={newRegPassword}
-                        onChange={(e) => setNewRegPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-slate-50 border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850 focus:bg-white"
-                        required
-                        minLength={6}
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Role Permission Level</label>
-                      <select
-                        value={newRegRole}
-                        onChange={(e) => setNewRegRole(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-850 outline-none focus:border-slate-850 focus:bg-white cursor-pointer"
-                      >
-                        <option value="user">Editor / Staff Member</option>
-                        <option value="admin">System Administrator</option>
-                      </select>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
-                    >
-                      <Plus size={14} />
-                      <span>Register Teammate</span>
-                    </button>
-                  </form>
+              {/* Status Banner */}
+              {regStatus && (
+                <div className={`mx-6 mt-4 p-3 rounded-xl text-xs font-bold shrink-0 ${
+                  regStatus.type === 'success' 
+                    ? 'bg-emerald-50 border border-emerald-150 text-emerald-800' 
+                    : 'bg-red-50 border border-red-150 text-red-00'
+                }`}>
+                  {regStatus.message}
                 </div>
+              )}
 
-                {/* Right Side: Active User Registry Directory */}
-                <div className="space-y-4 flex flex-col max-h-[50vh] md:max-h-none overflow-hidden">
-                  <div className="border-b border-slate-100 pb-2 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Console Members ({usersList.length})</h4>
-                      <p className="text-[10px] text-slate-500 font-medium font-sans">Active credential records stored inside Firestore catalog.</p>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto space-y-2.5 max-h-[40vh] md:max-h-[320px] pr-1">
-                    {usersList.length === 0 ? (
-                      <p className="text-[10px] font-semibold text-slate-400 text-center py-12">Retrieving system accounts registry...</p>
-                    ) : (
-                      usersList.map((usr, index) => (
-                        <div key={usr.uid || index} className="p-3 border border-slate-200/80 rounded-xl bg-slate-50/50 flex items-center justify-between gap-3 text-xs">
-                          <div className="flex items-center gap-2 max-w-[70%]">
-                            <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-200 text-white font-extrabold text-[11px] uppercase flex items-center justify-center shrink-0">
-                              {(usr.displayName || usr.username || 'U').charAt(0)}
+              {/* Body Content */}
+              <div className="p-6 overflow-y-auto flex-1 min-h-0">
+                {adminTab === 'users' ? (
+                  /* ======================================================== */
+                  /* TAB 1: COLLEAGUE ROLES AND USER REGISTRY CRUD */
+                  /* ======================================================== */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start h-full">
+                    {/* Left Form: Add or Edit user */}
+                    <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                      {editingUser ? (
+                        <div className="space-y-4">
+                          <div className="border-b border-slate-200 pb-2 flex justify-between items-center">
+                            <div>
+                              <h4 className="text-xs font-black text-indigo-700 tracking-wider uppercase">Edit Colleague Access</h4>
+                              <p className="text-[10px] text-slate-500 font-medium">Modify administrative roles and secure credentials.</p>
                             </div>
-                            <div className="flex flex-col truncate">
-                              <span className="font-extrabold text-slate-700 truncate leading-tight">{usr.displayName || 'Authorized Member'}</span>
-                              <span className="text-[10px] font-mono font-medium text-slate-450 leading-none mt-1 truncate">{usr.username}@editorial.local</span>
-                            </div>
+                            <button
+                              onClick={() => {
+                                setEditingUser(null);
+                                setEditUserDisplayName('');
+                                setEditUserPassword('');
+                                setEditUserRole('user');
+                                setEditUserPhotoURL('');
+                                setRegStatus(null);
+                              }}
+                              type="button"
+                              className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                              ✕ Cancel Edit
+                            </button>
                           </div>
 
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
-                              usr.role === 'admin' 
-                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' 
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
-                            }`}>
-                              {usr.role || 'Staff'}
-                            </span>
-                            {usr.createdAt && (
-                              <span className="text-[8px] text-slate-400 font-semibold">Registered {formatDate(usr.createdAt)}</span>
-                            )}
+                          <form onSubmit={handleUpdateUser} className="space-y-3.5">
+                            {/* Photo sector */}
+                            <div className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-lg">
+                              <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-200 text-white font-extrabold text-xs uppercase flex items-center justify-center overflow-hidden shrink-0">
+                                {editUserPhotoURL ? (
+                                  <img src={editUserPhotoURL} alt="Teammate preview" className="w-full h-full object-cover" />
+                                ) : (
+                                  (editUserDisplayName || editingUser.username || 'U').charAt(0)
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Teammate Image</span>
+                                <div className="flex items-center gap-1.5">
+                                  <label htmlFor="admin-pic-file-input" className="p-1 px-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded text-[9px] font-bold cursor-pointer">
+                                    Upload Pic
+                                  </label>
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={handleAdminProfilePicUpload} 
+                                    className="hidden" 
+                                    id="admin-pic-file-input" 
+                                  />
+                                  {editUserPhotoURL && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditUserPhotoURL('')}
+                                      className="text-[9px] font-bold text-red-500 p-1"
+                                    >
+                                      Clear
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Username Handle</label>
+                              <input
+                                type="text"
+                                value={editingUser.username}
+                                disabled
+                                className="w-full bg-slate-100 border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 cursor-not-allowed outline-none"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Full Display Name</label>
+                              <input
+                                type="text"
+                                value={editUserDisplayName}
+                                onChange={(e) => setEditUserDisplayName(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Change Password (Leave blank to keep existing)</label>
+                              <input
+                                type="password"
+                                value={editUserPassword}
+                                onChange={(e) => setEditUserPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full bg-white border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                minLength={6}
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Role Permission Level</label>
+                              <select
+                                value={editUserRole}
+                                onChange={(e) => setEditUserRole(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-850 cursor-pointer outline-none"
+                              >
+                                <option value="user">Editor / Staff Member</option>
+                                <option value="admin">System Administrator</option>
+                              </select>
+                            </div>
+
+                            <button
+                              type="submit"
+                              className="w-full bg-indigo-650 hover:bg-indigo-600 font-bold active:scale-[0.98] text-white py-2.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>Update Colleague Profile</span>
+                            </button>
+                          </form>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="border-b border-slate-100 pb-2">
+                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Team Member</h4>
+                            <p className="text-[10px] text-slate-500 font-medium">Create a local authenticated account with customized roles.</p>
+                          </div>
+
+                          <form onSubmit={handleRegisterUser} className="space-y-3.5">
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Full Display Name</label>
+                              <input
+                                type="text"
+                                value={newRegDisplayName}
+                                onChange={(e) => setNewRegDisplayName(e.target.value)}
+                                placeholder="e.g. Sandra Wulandari"
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Username Handle</label>
+                              <div className="flex items-center">
+                                <input
+                                  type="text"
+                                  value={newRegUsername}
+                                  onChange={(e) => setNewRegUsername(e.target.value)}
+                                  placeholder="e.g. sandra"
+                                  className="flex-1 bg-white border border-slate-250 rounded-l-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                  required
+                                />
+                                <span className="bg-slate-100 border border-l-0 border-slate-250 px-3 py-2 rounded-r-lg text-[10px] font-mono text-slate-500 select-none shrink-0">
+                                  @editorial.local
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Secure Access Password (min 6 chars)</label>
+                              <input
+                                type="password"
+                                value={newRegPassword}
+                                onChange={(e) => setNewRegPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="w-full bg-white border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                                minLength={6}
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Role Permission Level</label>
+                              <select
+                                value={newRegRole}
+                                onChange={(e) => setNewRegRole(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-855 cursor-pointer outline-none"
+                              >
+                                <option value="user">Editor / Staff Member</option>
+                                <option value="admin">System Administrator</option>
+                              </select>
+                            </div>
+
+                            <button
+                              type="submit"
+                              className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
+                            >
+                              <Plus size={14} />
+                              <span>Register Teammate</span>
+                            </button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Directory: Colleague List */}
+                    <div className="space-y-4 flex flex-col h-full max-h-[50vh] md:max-h-[380px] overflow-hidden">
+                      <div className="border-b border-slate-100 pb-2">
+                        <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Console Members ({usersList.length})</h4>
+                        <p className="text-[10px] text-slate-500 font-medium">Active credential records stored inside Firestore catalog.</p>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto space-y-2.5 pr-2">
+                        {usersList.length === 0 ? (
+                          <p className="text-[10px] font-semibold text-slate-400 text-center py-12">Retrieving system accounts registry...</p>
+                        ) : (
+                          usersList.map((usr, index) => (
+                            <div key={usr.uid || index} className="p-3 border border-slate-205 rounded-xl bg-white flex flex-col gap-2.5 shadow-3xs hover:border-slate-350 transition-all">
+                              <div className="flex items-center justify-between gap-3 text-xs">
+                                <div className="flex items-center gap-2 max-w-[65%]">
+                                  <div className="w-8.5 h-8.5 rounded-lg bg-slate-900 border border-slate-200 text-white font-extrabold text-[11px] uppercase flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                                    {usr.photoURL ? (
+                                      <img src={usr.photoURL} alt={usr.displayName} className="w-full h-full object-cover" />
+                                    ) : (
+                                      (usr.displayName || usr.username || 'U').charAt(0)
+                                    )}
+                                  </div>
+                                  <div className="flex flex-col truncate">
+                                    <span className="font-extrabold text-slate-700 truncate leading-tight">{usr.displayName || 'Authorized Member'}</span>
+                                    <span className="text-[10px] font-mono font-medium text-slate-450 leading-none mt-1 truncate">{usr.username}@editorial.local</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2.5 shrink-0">
+                                  <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                                    usr.role === 'admin' 
+                                      ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' 
+                                      : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                                  }`}>
+                                    {usr.role || 'Staff'}
+                                  </span>
+                                  
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingUser(usr);
+                                        setEditUserDisplayName(usr.displayName || '');
+                                        setEditUserRole(usr.role || 'user');
+                                        setEditUserPassword(usr.password || '');
+                                        setEditUserPhotoURL(usr.photoURL || '');
+                                        setRegStatus(null);
+                                      }}
+                                      type="button"
+                                      className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                                      title="Edit colleague credentials"
+                                    >
+                                      <Edit2 size={12} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteUser(usr.username)}
+                                      type="button"
+                                      className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                                      title="Delete colleague access"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                              {usr.createdAt && (
+                                <div className="text-[8.5px] text-slate-400 font-semibold flex items-center justify-between border-t border-slate-50 pt-1.5 font-sans">
+                                  <span>Registered {formatDate(usr.createdAt)}</span>
+                                  <span className="font-mono text-slate-350">{usr.password ? `PW: ${'•'.repeat(usr.password.length)}` : 'No PW'}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* ======================================================== */
+                  /* TAB 2: BOOK PROJECTS DIRECTORY CRUD (ADMINS ONLY) */
+                  /* ======================================================== */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start h-full">
+                    {/* Left Form: Add or Edit active projects */}
+                    <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                      {editingProject ? (
+                        <div className="space-y-4">
+                          <div className="border-b border-slate-200 pb-2 flex justify-between items-center">
+                            <div>
+                              <h4 className="text-xs font-black text-indigo-700 tracking-wider uppercase">Edit Book Project Metadata</h4>
+                              <p className="text-[10px] text-slate-500 font-medium">Re-orient client details, titles, or overrides directly.</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setEditingProject(null);
+                                setEditProjectName('');
+                                setEditProjectClientName('');
+                                setEditProjectClientEmail('');
+                                setEditProjectClientPhone('');
+                                setEditProjectPhaseIndex(0);
+                                setRegStatus(null);
+                              }}
+                              type="button"
+                              className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                              ✕ Cancel Edit
+                            </button>
+                          </div>
+
+                          <form onSubmit={handleUpdateProjectAdmin} className="space-y-3.5">
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Book Name / project Title</label>
+                              <input
+                                type="text"
+                                value={editProjectName}
+                                onChange={(e) => setEditProjectName(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Client Representative Name</label>
+                              <input
+                                type="text"
+                                value={editProjectClientName}
+                                onChange={(e) => setEditProjectClientName(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Client Email Address</label>
+                              <input
+                                type="email"
+                                value={editProjectClientEmail}
+                                onChange={(e) => setEditProjectClientEmail(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Client Phone Number</label>
+                              <input
+                                type="text"
+                                value={editProjectClientPhone}
+                                onChange={(e) => setEditProjectClientPhone(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Project Phase Override</label>
+                              <select
+                                value={editProjectPhaseIndex}
+                                onChange={(e) => setEditProjectPhaseIndex(Number(e.target.value))}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-850 cursor-pointer outline-none"
+                              >
+                                {PHASE_NAMES.map((name, idx) => (
+                                  <option key={idx} value={idx}>Phase {idx + 1}: {name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              type="submit"
+                              className="w-full bg-slate-900 hover:bg-slate-800 font-bold active:scale-[0.98] text-white py-2.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>Update Book Metadata</span>
+                            </button>
+                          </form>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="border-b border-slate-100 pb-2">
+                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Book Project Draft</h4>
+                            <p className="text-[10px] text-slate-500 font-medium">Instantiate a complete corporate project track record inside database.</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <p className="text-[10.5px] text-slate-550 leading-relaxed font-sans">
+                              Admins can click on <span className="font-extrabold text-[#0c6b54]">"New Book Project"</span> directly in the top navbar header. It will launch our dynamic Phase-1 wizard with full template blueprints preloaded automatically.
+                            </p>
+                            <button
+                              onClick={() => {
+                                setShowAdminPanel(false);
+                                setShowCreateForm(true);
+                              }}
+                              type="button"
+                              className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 font-bold text-white text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                            >
+                              <Plus size={13} />
+                              <span>Open Project Wizard Drawer</span>
+                            </button>
                           </div>
                         </div>
-                      ))
+                      )}
+                    </div>
+
+                    {/* Right Directory: Catalog List */}
+                    <div className="space-y-4 flex flex-col h-full max-h-[50vh] md:max-h-[380px] overflow-hidden">
+                      <div className="border-b border-slate-100 pb-2">
+                        <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Active Catalog Directory ({projects.length})</h4>
+                        <p className="text-[10px] text-slate-500 font-medium font-sans">Active project records synced with physical and digital formats.</p>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto space-y-2.5 pr-2">
+                        {projects.length === 0 ? (
+                          <p className="text-[10px] font-semibold text-slate-400 text-center py-12">Retrieving system catalog...</p>
+                        ) : (
+                          projects.map((p) => (
+                            <div key={p.id} className="p-3.5 border border-slate-205 rounded-xl bg-white flex flex-col gap-2.5 shadow-3xs hover:border-slate-350 transition-all">
+                              <div className="flex items-center justify-between gap-2.5 text-xs">
+                                <div className="flex items-center gap-2 max-w-[65%]">
+                                  <div className="w-8.5 h-8.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0 shadow-2xs">
+                                    <BookOpen size={14} />
+                                  </div>
+                                  <div className="flex flex-col truncate">
+                                    <span className="font-extrabold text-slate-800 truncate leading-tight">{p.projectName}</span>
+                                    <span className="text-[9px] font-mono font-medium text-slate-450 mt-1">ID: {p.id}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className={`px-2 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-slate-100 text-slate-705 border border-slate-200`}>
+                                    P{p.currentPhaseIndex + 1}
+                                  </span>
+                                  
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      onClick={() => {
+                                        setEditingProject(p);
+                                        setEditProjectName(p.projectName);
+                                        setEditProjectClientName(p.clientContact?.name || '');
+                                        setEditProjectClientEmail(p.clientContact?.email || '');
+                                        setEditProjectClientPhone(p.clientContact?.phone || '');
+                                        setEditProjectPhaseIndex(p.currentPhaseIndex);
+                                        setRegStatus(null);
+                                      }}
+                                      type="button"
+                                      className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                                      title="Edit book metadata override"
+                                    >
+                                      <Edit2 size={12} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteProject(p.id)}
+                                      type="button"
+                                      className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-650 transition-colors cursor-pointer"
+                                      title="Delete project track"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-2 border-t border-slate-50 text-[10px] font-medium text-slate-550">
+                                <div>Client: <span className="font-bold text-slate-700">{p.clientContact?.name || 'N/A'}</span></div>
+                                <div>Created: <span className="font-semibold text-slate-700">{p.createdAt}</span></div>
+                                <div className="col-span-2 truncate">Email: <span className="font-mono text-slate-700">{p.clientContact?.email || 'N/A'}</span></div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ======================================================== */}
+      {/* USER PERSONAL PROFILE SETTINGS MODAL */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {showProfileModal && (
+          <div key="profile-modal" className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-55 p-4 font-sans selection:bg-slate-900 selection:text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white border-2 border-slate-950 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl flex flex-col"
+            >
+              <div className="p-5 border-b border-slate-150 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-900 text-white p-2 rounded-xl">
+                    <User size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">My Profile Settings</h3>
+                    <p className="text-[10px] text-slate-450 font-medium">Configure credentials and upload avatar picture.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowProfileModal(false)}
+                  type="button"
+                  className="p-1 px-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-[10px] font-bold text-slate-700 cursor-pointer transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveProfile} className="p-5 space-y-4">
+                {/* Profile Pic Sector */}
+                <div className="flex items-center gap-3.5 p-3 border border-slate-150 rounded-xl bg-slate-50/50">
+                  <div className="relative w-12 h-12 bg-slate-900 border border-slate-200 rounded-xl text-white flex items-center justify-center font-extrabold text-base uppercase overflow-hidden shrink-0 shadow-sm">
+                    {newProfilePhotoURL ? (
+                      <img src={newProfilePhotoURL} alt="Profile photo" className="w-full h-full object-cover" />
+                    ) : (
+                      (newProfileDisplayName || userProfile?.username || 'U').charAt(0)
                     )}
+                  </div>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-wider">Colleague Photo</label>
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="modal-pic-file-input" className="px-2 py-1 bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 rounded-lg text-[9px] font-bold shadow-xs cursor-pointer select-none transition-all">
+                        Browse Image
+                      </label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleProfilePicUpload} 
+                        className="hidden" 
+                        id="modal-pic-file-input" 
+                      />
+                      {newProfilePhotoURL && (
+                        <button
+                          type="button"
+                          onClick={() => setNewProfilePhotoURL('')}
+                          className="text-[9px] font-bold text-red-500 hover:text-red-700 cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Display Name</label>
+                  <input
+                    type="text"
+                    value={newProfileDisplayName}
+                    onChange={(e) => setNewProfileDisplayName(e.target.value)}
+                    placeholder="Enter your full name"
+                    className="w-full bg-slate-50 border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850 focus:bg-white"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">New Password (Leave blank to keep existing)</label>
+                  <input
+                    type="password"
+                    value={newProfilePassword}
+                    onChange={(e) => setNewProfilePassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-50 border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850 focus:bg-white"
+                    minLength={6}
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 flex gap-2 justify-end">
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    type="button"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 text-xs font-bold rounded-lg cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 hover:scale-[1.01] transition-all text-white text-xs font-bold rounded-lg shadow-sm cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ======================================================== */}
+      {/* GLOBAL INTERACTIVE DELETION CONFIRMATION OVERLAY MODAL */}
+      {/* ======================================================== */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <div key="delete-confirmation-modal" className="fixed inset-0 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center z-59 p-4 font-sans selection:bg-slate-900 selection:text-white">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white border-2 border-[#ff3b30] rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl flex flex-col p-5 space-y-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="bg-red-50 border border-red-200 text-red-600 p-2.5 rounded-xl">
+                  <AlertCircle size={20} className="animate-pulse" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-black text-slate-800 tracking-tight">Confirm Deletion</h3>
+                  <p className="text-[10px] text-slate-400 font-medium">This operation is permanent and irreversible.</p>
+                </div>
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  type="button"
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                >
+                  ✕
+                </button>
               </div>
 
+              <div className="p-3.5 bg-red-50/50 border border-red-100 rounded-xl space-y-2 text-xs text-slate-700">
+                <p className="leading-relaxed">
+                  Are you absolutely sure you want to permanently delete this {deleteTarget.type === 'user' ? 'colleague registration account' : 'corporate book project draft'}?
+                </p>
+                <div className="p-2.5 bg-white border border-red-150 rounded-lg flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${deleteTarget.type === 'user' ? 'bg-indigo-600' : 'bg-emerald-600'}`} />
+                  <span className="font-mono font-black text-slate-800 break-all">{deleteTarget.displayName}</span>
+                </div>
+                {deleteTarget.type === 'user' ? (
+                  <p className="text-[9.5px] text-red-600 font-bold leading-normal">
+                    ⚠️ The colleague will immediately lose system registry credentials and cannot sign back in.
+                  </p>
+                ) : (
+                  <p className="text-[9.5px] text-red-600 font-bold leading-normal">
+                    ⚠️ All dynamic phases, brief notes, and printing configurations for this book will be permanently shredded.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setDeleteTarget(null)}
+                  type="button"
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold rounded-xl cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (deleteTarget.type === 'user') {
+                      await executeDeleteUser(deleteTarget.id);
+                    } else {
+                      await executeDeleteProject(deleteTarget.id);
+                    }
+                  }}
+                  type="button"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-black rounded-xl cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] shadow-md shadow-red-200/40 flex items-center gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  <span>Confirm Delete</span>
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
