@@ -211,14 +211,14 @@ export default function TrophyPreview({
             {/* Inner Gold Foil Margin Border */}
             <div className="w-full h-full border border-yellow-600/60 rounded flex flex-col justify-between p-4 bg-slate-900/5 backdrop-blur-[0.5px]">
               
-              {/* ReneTuros Emblem Icon (Trophy Version) */}
+              {/* Milestone Emblem Icon (Trophy Version) */}
               <div className="flex flex-col items-center">
                 <svg viewBox="0 0 110 90" className="h-6 w-auto mb-1 opacity-90 drop-shadow-sm filter brightness-110">
                   <path d="M28 6 L43 6 L22 40 L7 40 Z" fill="#94a3b8" />
                   <path d="M28 29 L43 29 L22 63 L7 63 Z" fill="#059669" />
                   <path d="M28 52 L43 52 L22 86 L7 86 Z" fill="#f97316" />
                 </svg>
-                <div className="text-[7px] font-bold tracking-[0.2em] text-white/40 font-mono">RENETUROS GROUP</div>
+                <div className="text-[7px] font-bold tracking-[0.2em] text-white/40 font-mono">MILESTONE GROUP</div>
               </div>
 
               {/* Central Metallic Panel */}
@@ -258,7 +258,7 @@ export default function TrophyPreview({
 
                 <div className="w-full pt-1.5 border-t border-slate-800/10">
                   <p className="text-[7.5px] font-medium leading-normal tracking-wide text-center max-w-[200px] mx-auto italic opacity-80 select-text">
-                    "{plaqueText || 'Crafted in collaboration with members of the Rene Turos Editorial Guild. Streamlined beautifully in 2026.'}"
+                    "{plaqueText || 'Crafted in collaboration with members of the Milestone Editorial Guild. Streamlined beautifully in 2026.'}"
                   </p>
                 </div>
 

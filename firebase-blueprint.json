@@ -95,6 +95,52 @@
         }
       },
       "required": ["id", "ownerId", "projectName", "currentPhaseIndex", "createdAt"]
+    },
+    "BookGenreCategory": {
+      "title": "BookGenreCategory",
+      "description": "A book genre category used to classify book projects.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique category identification string."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the book genre category."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description explaining this genre's scope."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    },
+    "MarketCategory": {
+      "title": "MarketCategory",
+      "description": "A target market or division category for book projects.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique category identification string."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the market division category."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description explaining this market's target audience."
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
     }
   },
   "firestore": {
@@ -105,6 +151,14 @@
     "projects/{projectId}": {
       "schema": "BookProject",
       "description": "Secure collection of custom projects tracked per user."
+    },
+    "genres/{genreId}": {
+      "schema": "BookGenreCategory",
+      "description": "Global list of book genres available for project classification briefs."
+    },
+    "market_categories/{categoryId}": {
+      "schema": "MarketCategory",
+      "description": "Global list of target market categories or audience divisions available."
     }
   }
 }

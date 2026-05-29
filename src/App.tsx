@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Undo2, BookOpen, Clock, CheckCircle2, ChevronRight, DollarSign, User, 
   HelpCircle, Trash2, Search, Filter, ShieldCheck, Mail, Phone, Calendar, Sparkles, AlertCircle, LogOut,
-  Edit, Edit2, Settings, X, Key, Users
+  Edit, Edit2, Settings, X, Key, Users, Tag, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Logo from './components/Logo';
-import { BookProject, ProspectStatus, FeedbackStatus, ProposalStatus, ContractStatus, TaskStatus, ProductionChapterStatus, ISBNStatus, CoverStatus, DummyBookStatus, TrophyStatus } from './types';
+import { BookProject, ProspectStatus, FeedbackStatus, ProposalStatus, ContractStatus, TaskStatus, ProductionChapterStatus, ISBNStatus, CoverStatus, DummyBookStatus, TrophyStatus, BookGenreCategory, MarketCategory } from './types';
 import { INITIAL_PROJECTS, PHASE_NAMES, PHASE_COLORS } from './initialData';
+import { DEFAULT_GENRES, DEFAULT_MARKETS } from './defaultCategories';
 import PhaseStepper from './components/PhaseStepper';
 import PhaseDetailForm from './components/PhaseDetailForm';
+import { ImageCropModal } from './components/ImageCropModal';
 
 // Firebase Integrations
 import { 
@@ -95,7 +97,7 @@ export default function App() {
   const [regStatus, setRegStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // Admin selected tab inside the console
-  const [adminTab, setAdminTab] = useState<'users' | 'projects'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'projects' | 'genres' | 'markets'>('users');
 
   // Member editing state
   const [editingUser, setEditingUser] = useState<any | null>(null);
@@ -112,6 +114,16 @@ export default function App() {
   const [editProjectClientPhone, setEditProjectClientPhone] = useState<string>('');
   const [editProjectPhaseIndex, setEditProjectPhaseIndex] = useState<number>(0);
 
+  // Admin project list search & pagination states
+  const [adminProjectSearch, setAdminProjectSearch] = useState<string>('');
+  const [adminProjectPage, setAdminProjectPage] = useState<number>(1);
+  const [adminProjectLimit, setAdminProjectLimit] = useState<number>(5);
+
+  // Avatar Crop Tool States
+  const [cropperOpen, setCropperOpen] = useState<boolean>(false);
+  const [cropperSource, setCropperSource] = useState<string>('');
+  const [cropperCallback, setCropperCallback] = useState<((cropped: string) => void) | null>(null);
+
   // User Dropdown and Profile Modal settings
   const [showUserMenu, setShowUserMenu] = useState<boolean>(false);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
@@ -121,7 +133,7 @@ export default function App() {
 
   // Custom confirmation modal target
   const [deleteTarget, setDeleteTarget] = useState<{
-    type: 'user' | 'project';
+    type: 'user' | 'project' | 'genre' | 'market';
     id: string;
     displayName: string;
   } | null>(null);
@@ -129,6 +141,18 @@ export default function App() {
   // Quick search and filtering states
   const [searchQuery, setSearchQuery] = useState('');
   const [filterGenre, setFilterGenre] = useState('All');
+
+  // Book Genre & Market states
+  const [genreCategories, setGenreCategories] = useState<BookGenreCategory[]>(DEFAULT_GENRES);
+  const [marketCategories, setMarketCategories] = useState<MarketCategory[]>(DEFAULT_MARKETS);
+
+  // Category CRUD states
+  const [categoryFormOpen, setCategoryFormOpen] = useState(false);
+  const [categoryFormType, setCategoryFormType] = useState<'genre' | 'market'>('genre');
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryFormName, setCategoryFormName] = useState('');
+  const [categoryFormDescription, setCategoryFormDescription] = useState('');
+  const [categoryStatus, setCategoryStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
   // New Project Form Overlay States
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -266,6 +290,88 @@ export default function App() {
       if (unsubProjects) unsubProjects();
     };
   }, [userProfile?.uid]);
+
+  // Synchronize Book Genre Categories and Market Categories from Firestore
+  useEffect(() => {
+    // 1. Subscribe to 'genres'
+    const genresRef = collection(db, 'genres');
+    const unsubGenres = onSnapshot(genresRef, (snapshot) => {
+      const list: BookGenreCategory[] = [];
+      snapshot.forEach(docSnap => {
+        list.push(docSnap.data() as BookGenreCategory);
+      });
+      if (list.length > 0) {
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        setGenreCategories(list);
+        localStorage.setItem('Milestone_GenreCategories', JSON.stringify(list));
+      } else {
+        const stored = localStorage.getItem('Milestone_GenreCategories');
+        if (stored) {
+          try {
+            setGenreCategories(JSON.parse(stored));
+          } catch (e) {
+            setGenreCategories(DEFAULT_GENRES);
+          }
+        } else {
+          setGenreCategories(DEFAULT_GENRES);
+        }
+      }
+    }, (err) => {
+      console.warn("Could not load genres from Firestore, checking localStorage:", err);
+      const stored = localStorage.getItem('Milestone_GenreCategories');
+      if (stored) {
+        try {
+          setGenreCategories(JSON.parse(stored));
+        } catch (e) {
+          setGenreCategories(DEFAULT_GENRES);
+        }
+      } else {
+        setGenreCategories(DEFAULT_GENRES);
+      }
+    });
+
+    // 2. Subscribe to 'market_categories'
+    const marketsRef = collection(db, 'market_categories');
+    const unsubMarkets = onSnapshot(marketsRef, (snapshot) => {
+      const list: MarketCategory[] = [];
+      snapshot.forEach(docSnap => {
+        list.push(docSnap.data() as MarketCategory);
+      });
+      if (list.length > 0) {
+        list.sort((a, b) => a.name.localeCompare(b.name));
+        setMarketCategories(list);
+        localStorage.setItem('Milestone_MarketCategories', JSON.stringify(list));
+      } else {
+        const stored = localStorage.getItem('Milestone_MarketCategories');
+        if (stored) {
+          try {
+            setMarketCategories(JSON.parse(stored));
+          } catch (e) {
+            setMarketCategories(DEFAULT_MARKETS);
+          }
+        } else {
+          setMarketCategories(DEFAULT_MARKETS);
+        }
+      }
+    }, (err) => {
+      console.warn("Could not load market categories from Firestore, checking localStorage:", err);
+      const stored = localStorage.getItem('Milestone_MarketCategories');
+      if (stored) {
+        try {
+          setMarketCategories(JSON.parse(stored));
+        } catch (e) {
+          setMarketCategories(DEFAULT_MARKETS);
+        }
+      } else {
+        setMarketCategories(DEFAULT_MARKETS);
+      }
+    });
+
+    return () => {
+      unsubGenres();
+      unsubMarkets();
+    };
+  }, []);
 
   // Sync profile details to profile settings modal fields
   useEffect(() => {
@@ -460,6 +566,148 @@ export default function App() {
     }
   };
 
+  // Save Genre/Market Category
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCategoryStatus(null);
+    if (!categoryFormName.trim()) {
+      setCategoryStatus({ type: 'error', message: 'Category name cannot be empty.' });
+      return;
+    }
+
+    const cleanName = categoryFormName.trim();
+    const cleanDesc = categoryFormDescription.trim();
+    const isEdit = !!editingCategoryId;
+    const catId = editingCategoryId || `${categoryFormType}-${Date.now()}`;
+    const collectionName = categoryFormType === 'genre' ? 'genres' : 'market_categories';
+
+    try {
+      const docRef = doc(db, collectionName, catId);
+      const categoryData = { id: catId, name: cleanName, description: cleanDesc };
+      await setDoc(docRef, categoryData);
+
+      setCategoryStatus({ 
+        type: 'success', 
+        message: `Category "${cleanName}" has been successfully ${isEdit ? 'updated' : 'created'}.` 
+      });
+
+      // Clear form
+      setEditingCategoryId(null);
+      setCategoryFormName('');
+      setCategoryFormDescription('');
+      setCategoryFormOpen(false);
+
+      // Force instant local layout update for instant UX feedback
+      if (categoryFormType === 'genre') {
+        const updated = isEdit 
+          ? genreCategories.map(c => c.id === catId ? categoryData : c)
+          : [...genreCategories, categoryData];
+        updated.sort((a,b) => a.name.localeCompare(b.name));
+        setGenreCategories(updated);
+        localStorage.setItem('Milestone_GenreCategories', JSON.stringify(updated));
+      } else {
+        const updated = isEdit
+          ? marketCategories.map(c => c.id === catId ? categoryData : c)
+          : [...marketCategories, categoryData];
+        updated.sort((a,b) => a.name.localeCompare(b.name));
+        setMarketCategories(updated);
+        localStorage.setItem('Milestone_MarketCategories', JSON.stringify(updated));
+      }
+    } catch (err: any) {
+      console.error("Error saving category:", err);
+      // Fallback update in state if Firestore is offline
+      const categoryData = { id: catId, name: cleanName, description: cleanDesc };
+      if (categoryFormType === 'genre') {
+        const updated = isEdit 
+          ? genreCategories.map(c => c.id === catId ? categoryData : c)
+          : [...genreCategories, categoryData];
+        updated.sort((a,b) => a.name.localeCompare(b.name));
+        setGenreCategories(updated);
+        localStorage.setItem('Milestone_GenreCategories', JSON.stringify(updated));
+      } else {
+        const updated = isEdit
+          ? marketCategories.map(c => c.id === catId ? categoryData : c)
+          : [...marketCategories, categoryData];
+        updated.sort((a,b) => a.name.localeCompare(b.name));
+        setMarketCategories(updated);
+        localStorage.setItem('Milestone_MarketCategories', JSON.stringify(updated));
+      }
+
+      setCategoryStatus({ 
+        type: 'success', 
+        message: `Category saved locally (Offline mode).` 
+      });
+      setCategoryFormName('');
+      setCategoryFormDescription('');
+      setEditingCategoryId(null);
+      setCategoryFormOpen(false);
+    }
+  };
+
+  const handleEditCategory = (cat: any, type: 'genre' | 'market') => {
+    setCategoryFormType(type);
+    setEditingCategoryId(cat.id);
+    setCategoryFormName(cat.name);
+    setCategoryFormDescription(cat.description || '');
+    setCategoryFormOpen(true);
+    setCategoryStatus(null);
+  };
+
+  const handleDeleteCategory = (cat: any, type: 'genre' | 'market') => {
+    setDeleteTarget({
+      type,
+      id: cat.id,
+      displayName: cat.name
+    });
+  };
+
+  const executeDeleteCategory = async (id: string, type: 'genre' | 'market') => {
+    setCategoryStatus(null);
+    const collectionName = type === 'genre' ? 'genres' : 'market_categories';
+    const originalName = type === 'genre' 
+      ? genreCategories.find(c => c.id === id)?.name 
+      : marketCategories.find(c => c.id === id)?.name;
+
+    try {
+      const docRef = doc(db, collectionName, id);
+      await deleteDoc(docRef);
+
+      // Force instant update
+      if (type === 'genre') {
+        const filtered = genreCategories.filter(c => c.id !== id);
+        setGenreCategories(filtered);
+        localStorage.setItem('Milestone_GenreCategories', JSON.stringify(filtered));
+      } else {
+        const filtered = marketCategories.filter(c => c.id !== id);
+        setMarketCategories(filtered);
+        localStorage.setItem('Milestone_MarketCategories', JSON.stringify(filtered));
+      }
+
+      setCategoryStatus({ 
+        type: 'success', 
+        message: `Category "${originalName || id}" has been successfully deleted.` 
+      });
+    } catch (err: any) {
+      console.error("Error deleting category:", err);
+      // Fallback
+      if (type === 'genre') {
+        const filtered = genreCategories.filter(c => c.id !== id);
+        setGenreCategories(filtered);
+        localStorage.setItem('Milestone_GenreCategories', JSON.stringify(filtered));
+      } else {
+        const filtered = marketCategories.filter(c => c.id !== id);
+        setMarketCategories(filtered);
+        localStorage.setItem('Milestone_MarketCategories', JSON.stringify(filtered));
+      }
+      setCategoryStatus({ 
+        type: 'success', 
+        message: `Category deleted locally (Offline mode).` 
+      });
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
   // User profile editor handler
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -511,9 +759,15 @@ export default function App() {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setNewProfilePhotoURL(base64String);
+      setCropperSource(base64String);
+      setCropperCallback(() => (croppedBase64: string) => {
+        setNewProfilePhotoURL(croppedBase64);
+      });
+      setCropperOpen(true);
     };
     reader.readAsDataURL(file);
+    // Clear input
+    e.target.value = '';
   };
 
   const handleAdminProfilePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -528,9 +782,15 @@ export default function App() {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setEditUserPhotoURL(base64String);
+      setCropperSource(base64String);
+      setCropperCallback(() => (croppedBase64: string) => {
+        setEditUserPhotoURL(croppedBase64);
+      });
+      setCropperOpen(true);
     };
     reader.readAsDataURL(file);
+    // Clear input
+    e.target.value = '';
   };
 
   // Admin updates a Book Project
@@ -589,7 +849,7 @@ export default function App() {
   // Reset current items and re-hydrate with default templates
   const handleResetData = async () => {
     if (!user) return;
-    if (window.confirm("Are you sure you want to reset all records back to René Turos presets? All existing project records will be replaced.")) {
+    if (window.confirm("Are you sure you want to reset all records back to Milestone presets? All existing project records will be replaced.")) {
       if (isSandbox || firestoreOffline) {
         const defaultProj = INITIAL_PROJECTS.map(p => ({
           ...p,
@@ -686,7 +946,7 @@ export default function App() {
       prospect: {
         meetingDate: '',
         meetingTime: '',
-        meetingLocation: 'Rene Turos Offices',
+        meetingLocation: 'Milestone Offices',
         noted: false,
         status: ProspectStatus.PENDING
       },
@@ -717,7 +977,7 @@ export default function App() {
       closing: {
         finalAmount: 112500000,
         contractStatus: ContractStatus.DRAFT,
-        contractDraftText: `Agreement draft for public services bundle on "${newProjectName.trim()}" between Rene Turos Group and stakeholders. Content details locked upon Phase 5 approved status.`,
+        contractDraftText: `Agreement draft for public services bundle on "${newProjectName.trim()}" between Milestone Group and stakeholders. Content details locked upon Phase 5 approved status.`,
         signedDate: '',
         signingRepresentative: ''
       },
@@ -768,7 +1028,7 @@ export default function App() {
         trophyStatus: TrophyStatus.NONE,
         trophyRecipientName: newClientName.trim(),
         trophyDesignation: `Author of "${newProjectName.trim()}"`,
-        trophyPlaqueText: `Commemorating "${newProjectName.trim()}" in partnership with the René Turos Editorial Guild.`
+        trophyPlaqueText: `Commemorating "${newProjectName.trim()}" in partnership with the Milestone Editorial Guild.`
       }
     };
 
@@ -979,7 +1239,7 @@ export default function App() {
         </div>
 
         <footer className="w-full max-w-md mx-auto flex items-center justify-between border-t border-slate-200/60 pt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest font-mono">
-          <span>&copy; {new Date().getFullYear()} Rene Turos Group</span>
+          <span>&copy; {new Date().getFullYear()} Milestone Group</span>
           <span>v1.4.15</span>
         </footer>
       </div>
@@ -1131,7 +1391,1028 @@ export default function App() {
       </header>
 
       {/* 2. MAIN WORKSPACE CONTAINER */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      {showAdminPanel ? (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex flex-col md:flex-row gap-6 font-sans">
+          {/* SIDEBAR */}
+          <aside className="w-full md:w-64 shrink-0">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4.5 shadow-2xs space-y-4">
+              <div className="flex items-center gap-2.5 pb-3.5 border-b border-slate-100">
+                <div className="bg-slate-900 text-white p-2 rounded-xl">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-slate-800 tracking-tight uppercase">Admin Desk</h3>
+                  <p className="text-[9px] text-slate-400 font-mono">Control Center</p>
+                </div>
+              </div>
+
+              <nav className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('users'); setRegStatus(null); }}
+                  className={`flex items-center justify-between w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    adminTab === 'users'
+                      ? 'bg-slate-900 text-white shadow-sm font-black'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Users size={14} className={adminTab === 'users' ? 'text-white' : 'text-slate-400'} />
+                    <span>Teammates</span>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    adminTab === 'users' ? 'bg-slate-800 text-slate-200' : 'bg-slate-105 text-slate-600'
+                  }`}>
+                    {usersList.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('projects'); setRegStatus(null); }}
+                  className={`flex items-center justify-between w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    adminTab === 'projects'
+                      ? 'bg-slate-900 text-white shadow-sm font-black'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <BookOpen size={14} className={adminTab === 'projects' ? 'text-white' : 'text-slate-400'} />
+                    <span>Projects</span>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    adminTab === 'projects' ? 'bg-slate-800 text-slate-200' : 'bg-slate-105 text-slate-600'
+                  }`}>
+                    {projects.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('genres'); setRegStatus(null); }}
+                  className={`flex items-center justify-between w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    adminTab === 'genres'
+                      ? 'bg-slate-900 text-white shadow-sm font-black'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Tag size={14} className={adminTab === 'genres' ? 'text-white' : 'text-slate-400'} />
+                    <span>Genres</span>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    adminTab === 'genres' ? 'bg-slate-800 text-slate-200' : 'bg-slate-105 text-slate-600'
+                  }`}>
+                    {genreCategories.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setAdminTab('markets'); setRegStatus(null); }}
+                  className={`flex items-center justify-between w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    adminTab === 'markets'
+                      ? 'bg-slate-900 text-white shadow-sm font-black'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Layers size={14} className={adminTab === 'markets' ? 'text-white' : 'text-slate-400'} />
+                    <span>Markets</span>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
+                    adminTab === 'markets' ? 'bg-slate-800 text-slate-200' : 'bg-slate-105 text-slate-600'
+                  }`}>
+                    {marketCategories.length}
+                  </span>
+                </button>
+              </nav>
+
+              <div className="pt-3.5 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAdminPanel(false);
+                    setRegStatus(null);
+                    setEditingUser(null);
+                    setEditingProject(null);
+                  }}
+                  className="flex items-center gap-2 w-full text-left px-3.5 py-2 hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  <Undo2 size={13} className="text-slate-400" />
+                  <span>Exit Admin Desk</span>
+                </button>
+              </div>
+            </div>
+          </aside>
+
+          {/* DYNAMIC HUB CONTENT PANEL AREA */}
+          <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-2xs p-6 flex flex-col min-h-[550px]">
+            <div className="pb-4 border-b border-slate-100 mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-slate-805 tracking-tight">
+                  {adminTab === 'users' && 'Teammates Access Hub'}
+                  {adminTab === 'projects' && 'System Book Catalog'}
+                  {adminTab === 'genres' && 'Publication Genre Categories'}
+                  {adminTab === 'markets' && 'Target Market Divisions'}
+                </h2>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-0.5">
+                  {adminTab === 'users' && 'Oversee, edit, and provision new staff credentials.'}
+                  {adminTab === 'projects' && 'Add, update metadata, or deprecate book production timelines.'}
+                  {adminTab === 'genres' && 'Configure custom genre specifications available for book briefs.'}
+                  {adminTab === 'markets' && 'Manage market category lists targeted by authors and divisions.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Status alerts inside page */}
+            {regStatus && (
+              <div className={`mb-6 p-3 rounded-xl text-xs font-bold shrink-0 ${
+                regStatus.type === 'success' 
+                  ? 'bg-emerald-50 border border-emerald-150 text-emerald-800' 
+                  : 'bg-red-50 border border-red-150 text-red-650'
+              }`}>
+                {regStatus.message}
+              </div>
+            )}
+
+            {categoryStatus && (
+              <div className={`mb-6 p-3 rounded-xl text-xs font-bold shrink-0 ${
+                categoryStatus.type === 'success' 
+                  ? 'bg-emerald-50 border border-emerald-150 text-emerald-800' 
+                  : 'bg-red-50 border border-red-155 text-red-650'
+              }`}>
+                {categoryStatus.message}
+              </div>
+            )}
+
+            <div className="flex-1 min-h-0">
+              {adminTab === 'users' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start h-full text-slate-705">
+                  {/* Left Form: Add or Edit user */}
+                  <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                    {editingUser ? (
+                      <div className="space-y-4">
+                        <div className="border-b border-slate-200 pb-2 flex justify-between items-center">
+                          <div>
+                            <h4 className="text-xs font-black text-indigo-700 tracking-wider uppercase">Edit Colleague Access</h4>
+                            <p className="text-[10px] text-slate-500 font-medium">Modify administrative roles and secure credentials.</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingUser(null);
+                              setEditUserDisplayName('');
+                              setEditUserPassword('');
+                              setEditUserRole('user');
+                              setEditUserPhotoURL('');
+                              setRegStatus(null);
+                            }}
+                            type="button"
+                            className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            ✕ Cancel Edit
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateUser} className="space-y-3.5">
+                          {/* Photo sector */}
+                          <div className="flex items-center gap-3 p-2 bg-white border border-slate-200 rounded-lg">
+                            <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-205 text-white font-extrabold text-xs uppercase flex items-center justify-center overflow-hidden shrink-0">
+                              {editUserPhotoURL ? (
+                                <img src={editUserPhotoURL} alt="Teammate preview" className="w-full h-full object-cover" />
+                              ) : (
+                                (editUserDisplayName || editingUser.username || 'U').charAt(0)
+                              )}
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Teammate Image</span>
+                              <div className="flex items-center gap-1.5">
+                                <label htmlFor="admin-pic-file-input" className="p-1 px-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded text-[9px] font-bold cursor-pointer">
+                                  Upload Pic
+                                </label>
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  onChange={handleAdminProfilePicUpload} 
+                                  className="hidden" 
+                                  id="admin-pic-file-input" 
+                                />
+                                {editUserPhotoURL && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditUserPhotoURL('')}
+                                    className="text-[9px] font-bold text-red-500 p-1"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Username Handle</label>
+                            <input
+                              type="text"
+                              value={editingUser.username}
+                              disabled
+                              className="w-full bg-slate-100 border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-500 cursor-not-allowed outline-none"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Full Display Name</label>
+                            <input
+                              type="text"
+                              value={editUserDisplayName}
+                              onChange={(e) => setEditUserDisplayName(e.target.value)}
+                              className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Change Password (Leave blank to keep existing)</label>
+                            <input
+                              type="password"
+                              value={editUserPassword}
+                              onChange={(e) => setEditUserPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full bg-white border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              minLength={6}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Role Permission Level</label>
+                            <select
+                              value={editUserRole}
+                              onChange={(e) => setEditUserRole(e.target.value)}
+                              className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-850 cursor-pointer outline-none"
+                            >
+                              <option value="user">Editor / Staff Member</option>
+                              <option value="admin">System Administrator</option>
+                            </select>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full bg-indigo-650 hover:bg-indigo-600 font-bold active:scale-[0.98] text-white py-2.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Update Colleague Profile</span>
+                          </button>
+                        </form>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="border-b border-slate-100 pb-2">
+                          <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Team Member</h4>
+                          <p className="text-[10px] text-slate-500 font-medium">Create a local authenticated account with customized roles.</p>
+                        </div>
+
+                        <form onSubmit={handleRegisterUser} className="space-y-3.5">
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Full Display Name</label>
+                            <input
+                              type="text"
+                              value={newRegDisplayName}
+                              onChange={(e) => setNewRegDisplayName(e.target.value)}
+                              placeholder="e.g. Sandra Wulandari"
+                              className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              required
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Username Handle</label>
+                            <div className="flex items-center">
+                              <input
+                                type="text"
+                                value={newRegUsername}
+                                onChange={(e) => setNewRegUsername(e.target.value)}
+                                placeholder="e.g. sandra"
+                                className="flex-1 bg-white border border-slate-250 rounded-l-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                              <span className="bg-slate-100 border border-l-0 border-slate-250 px-3 py-2 rounded-r-lg text-[10px] font-mono text-slate-500 select-none shrink-0">
+                                @editorial.local
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Secure Access Password (min 6 chars)</label>
+                            <input
+                              type="password"
+                              value={newRegPassword}
+                              onChange={(e) => setNewRegPassword(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full bg-white border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              required
+                              minLength={6}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Role Permission Level</label>
+                            <select
+                              value={newRegRole}
+                              onChange={(e) => setNewRegRole(e.target.value)}
+                              className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-855 cursor-pointer outline-none"
+                            >
+                              <option value="user">Editor / Staff Member</option>
+                              <option value="admin">System Administrator</option>
+                            </select>
+                          </div>
+
+                          <button
+                            type="submit"
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
+                          >
+                            <Plus size={14} />
+                            <span>Register Teammate</span>
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Directory: Colleague List */}
+                  <div className="space-y-4 flex flex-col h-full max-h-[500px] overflow-hidden">
+                    <div className="border-b border-slate-100 pb-2">
+                      <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Console Members ({usersList.length})</h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Active credential records stored inside Firestore catalog.</p>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-2.5 pr-2">
+                      {usersList.length === 0 ? (
+                        <p className="text-[10px] font-semibold text-slate-400 text-center py-12">Retrieving system accounts registry...</p>
+                      ) : (
+                        usersList.map((usr, index) => (
+                          <div key={usr.uid || index} className="p-3 border border-slate-205 rounded-xl bg-white flex flex-col gap-2.5 shadow-3xs hover:border-slate-350 transition-all">
+                            <div className="flex items-center justify-between gap-3 text-xs">
+                              <div className="flex items-center gap-2 max-w-[65%]">
+                                <div className="w-8.5 h-8.5 rounded-lg bg-slate-900 border border-slate-200 text-white font-extrabold text-[11px] uppercase flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                                  {usr.photoURL ? (
+                                    <img src={usr.photoURL} alt={usr.displayName} className="w-full h-full object-cover" />
+                                  ) : (
+                                    (usr.displayName || usr.username || 'U').charAt(0)
+                                  )}
+                                </div>
+                                <div className="flex flex-col truncate">
+                                  <span className="font-extrabold text-slate-700 truncate leading-tight">{usr.displayName || 'Authorized Member'}</span>
+                                  <span className="text-[10px] font-mono font-medium text-slate-450 leading-none mt-1 truncate">{usr.username}@editorial.local</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2.5 shrink-0">
+                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                                  usr.role === 'admin' 
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-150' 
+                                    : 'bg-emerald-50 text-emerald-700 border border-emerald-150'
+                                }`}>
+                                  {usr.role || 'Staff'}
+                                </span>
+                                
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => {
+                                      setEditingUser(usr);
+                                      setEditUserDisplayName(usr.displayName || '');
+                                      setEditUserRole(usr.role || 'user');
+                                      setEditUserPassword(usr.password || '');
+                                      setEditUserPhotoURL(usr.photoURL || '');
+                                      setRegStatus(null);
+                                    }}
+                                    type="button"
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                                    title="Edit colleague credentials"
+                                  >
+                                    <Edit2 size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteUser(usr.username)}
+                                    type="button"
+                                    className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                                    title="Delete colleague access"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            {usr.createdAt && (
+                              <div className="text-[8.5px] text-slate-400 font-semibold flex items-center justify-between border-t border-slate-50 pt-1.5 font-sans">
+                                <span>Registered {formatDate(usr.createdAt)}</span>
+                                <span className="font-mono text-slate-350">{usr.password ? `PW: ${'•'.repeat(usr.password.length)}` : 'No PW'}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === 'projects' && (() => {
+                const query = adminProjectSearch.toLowerCase().trim();
+                const filteredProjects = projects.filter((p) => {
+                  if (!query) return true;
+                  return (
+                    p.projectName.toLowerCase().includes(query) ||
+                    p.id.toLowerCase().includes(query) ||
+                    (p.clientContact?.name || '').toLowerCase().includes(query) ||
+                    (p.clientContact?.email || '').toLowerCase().includes(query) ||
+                    (p.clientContact?.phone || '').toLowerCase().includes(query)
+                  );
+                });
+
+                const totalItems = filteredProjects.length;
+                const totalPages = Math.ceil(totalItems / adminProjectLimit) || 1;
+                const currentPageAdjusted = Math.min(adminProjectPage, totalPages);
+                const startIndex = (currentPageAdjusted - 1) * adminProjectLimit;
+                const paginatedProjects = filteredProjects.slice(startIndex, startIndex + adminProjectLimit);
+
+                return (
+                  <div className="flex flex-col xl:flex-row gap-6 items-start h-full text-slate-705 font-sans">
+                    {/* Left Column: Form/Helper */}
+                    <div className="w-full xl:w-72 shrink-0 bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                      {editingProject ? (
+                        <div className="space-y-4">
+                          <div className="border-b border-slate-200 pb-2 flex justify-between items-center">
+                            <div>
+                              <h4 className="text-xs font-black text-indigo-700 tracking-wider uppercase">Edit Book Project</h4>
+                              <p className="text-[10px] text-slate-500 font-medium">Re-orient client details, titles, or overrides directly.</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setEditingProject(null);
+                                setEditProjectName('');
+                                setEditProjectClientName('');
+                                setEditProjectClientEmail('');
+                                setEditProjectClientPhone('');
+                                setEditProjectPhaseIndex(0);
+                                setRegStatus(null);
+                              }}
+                              type="button"
+                              className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                            >
+                              ✕ Cancel Edit
+                            </button>
+                          </div>
+
+                          <form onSubmit={handleUpdateProjectAdmin} className="space-y-3.5">
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Book Name / Project Title</label>
+                              <input
+                                type="text"
+                                value={editProjectName}
+                                onChange={(e) => setEditProjectName(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-455 uppercase tracking-wider">Client Representative Name</label>
+                              <input
+                                type="text"
+                                value={editProjectClientName}
+                                onChange={(e) => setEditProjectClientName(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                                required
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Client Email Address</label>
+                              <input
+                                type="email"
+                                value={editProjectClientEmail}
+                                onChange={(e) => setEditProjectClientEmail(e.target.value)}
+                                className="w-full bg-white border border-slate-255 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Client Phone Number</label>
+                              <input
+                                type="text"
+                                value={editProjectClientPhone}
+                                onChange={(e) => setEditProjectClientPhone(e.target.value)}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label className="block text-[9px] font-extrabold text-slate-450 uppercase tracking-wider">Project Phase Override</label>
+                              <select
+                                value={editProjectPhaseIndex}
+                                onChange={(e) => setEditProjectPhaseIndex(Number(e.target.value))}
+                                className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-850 cursor-pointer outline-none"
+                              >
+                                {PHASE_NAMES.map((name, idx) => (
+                                  <option key={idx} value={idx}>Phase {idx + 1}: {name}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <button
+                              type="submit"
+                              className="w-full bg-slate-900 hover:bg-slate-800 font-bold active:scale-[0.98] text-white py-2.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer transition-all mt-4"
+                            >
+                              <CheckCircle2 size={13} />
+                              <span>Update Book Metadata</span>
+                            </button>
+                          </form>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="border-b border-slate-100 pb-2">
+                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Book Project Draft</h4>
+                            <p className="text-[10px] text-slate-500 font-medium">Instantiate a complete corporate project track record inside database.</p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <p className="text-[10.5px] text-slate-550 leading-relaxed font-sans">
+                              Admins can click on <span className="font-extrabold text-[#0c6b54]">"New Book Project"</span> directly in the top navbar header. It will launch our dynamic Phase-1 wizard with full template blueprints preloaded automatically.
+                            </p>
+                            <button
+                              onClick={() => {
+                                setShowAdminPanel(false);
+                                setShowCreateForm(true);
+                              }}
+                              type="button"
+                              className="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 font-bold text-white text-xs rounded-lg flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                            >
+                              <Plus size={13} />
+                              <span>Open Project Wizard Drawer</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Catalog Directory (Data Table) */}
+                    <div className="flex-1 w-full space-y-4 flex flex-col min-h-0">
+                      {/* Search and Title row */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3 shrink-0">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Active Catalog Directory</h4>
+                            <span className="text-[10px] bg-slate-100 px-2.5 py-0.5 rounded-full font-extrabold text-slate-500">
+                              {totalItems}
+                            </span>
+                          </div>
+                          <p className="text-[10.5px] text-slate-450 font-medium mt-0.5">Active project records synced with physical and digital formats.</p>
+                        </div>
+
+                        {/* Search keyword */}
+                        <div className="relative w-full sm:w-64 shrink-0 font-sans">
+                          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Search by title, client..."
+                            value={adminProjectSearch}
+                            onChange={(e) => {
+                              setAdminProjectSearch(e.target.value);
+                              setAdminProjectPage(1);
+                            }}
+                            className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-205 focus:bg-white focus:border-slate-800 rounded-lg text-[11px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400"
+                          />
+                          {adminProjectSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setAdminProjectSearch('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10.5px] font-extrabold text-slate-400 hover:text-slate-600 transition-colors p-1"
+                              title="Clear search query"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Paginated Table View */}
+                      <div className="flex-1 min-h-[320px] overflow-hidden flex flex-col justify-between">
+                        {projects.length === 0 ? (
+                          <p className="text-[10px] font-semibold text-slate-400 text-center py-12">Retrieving system catalog...</p>
+                        ) : filteredProjects.length === 0 ? (
+                          <div className="text-center py-12 border border-dashed border-slate-200 rounded-xl bg-slate-50/20 my-auto">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                              <Search size={15} />
+                            </div>
+                            <p className="text-xs font-black text-slate-705">No records matched your search</p>
+                            <p className="text-[10px] text-slate-400 mt-1 font-sans">Try checking for spelling errors, or refining the keywords.</p>
+                            <button
+                              type="button"
+                              onClick={() => setAdminProjectSearch('')}
+                              className="mt-3.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-850 text-white text-[10px] font-extrabold rounded-lg shadow-2xs transition-all cursor-pointer font-sans"
+                            >
+                              Reset Search Input
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col justify-between h-full">
+                            <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-3xs max-h-[380px] overflow-y-auto">
+                              <table className="w-full text-left border-collapse font-sans text-xs">
+                                <thead>
+                                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-black uppercase text-slate-450 tracking-wider">
+                                    <th className="px-3 py-2.5">Book Details</th>
+                                    <th className="px-3 py-2.5">Production Phase</th>
+                                    <th className="px-3 py-2.5">Client & Contact</th>
+                                    <th className="px-2 py-2.5">Date Created</th>
+                                    <th className="px-3 py-2.5 text-right">Actions</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-705 font-medium">
+                                  {paginatedProjects.map((p) => {
+                                    const currentPhaseName = PHASE_NAMES[p.currentPhaseIndex] || `Phase ${p.currentPhaseIndex + 1}`;
+                                    return (
+                                      <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
+                                        {/* Book Title */}
+                                        <td className="px-3 py-2.5 max-w-[160px]">
+                                          <div className="flex items-start gap-2.5">
+                                            <div className="w-7 h-7 rounded bg-emerald-50 text-emerald-800 border border-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                                              <BookOpen size={13} />
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                              <span className="font-extrabold text-slate-800 text-xs truncate" title={p.projectName}>
+                                                {p.projectName}
+                                              </span>
+                                              <span className="text-[9px] font-mono font-bold text-slate-400 mt-0.5 truncate">
+                                                ID: {p.id}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </td>
+
+                                        {/* Production Phase Badge */}
+                                        <td className="px-3 py-2.5">
+                                          <div className="flex flex-col gap-1 items-start">
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
+                                              p.currentPhaseIndex === 0
+                                                ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                                                : p.currentPhaseIndex === 4
+                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                                            }`}>
+                                              Phase {p.currentPhaseIndex + 1}
+                                            </span>
+                                            <span className="text-[10px] text-slate-500 font-semibold truncate max-w-[120px]" title={currentPhaseName}>
+                                              {currentPhaseName}
+                                            </span>
+                                          </div>
+                                        </td>
+
+                                        {/* Client & Contact */}
+                                        <td className="px-3 py-2.5">
+                                          <div className="flex flex-col min-w-0 max-w-[180px]">
+                                            <span className="font-bold text-slate-805 truncate">{p.clientContact?.name || 'N/A'}</span>
+                                            {p.clientContact?.email && (
+                                              <span className="text-[9.5px] font-mono text-slate-400 truncate mt-0.5 hover:text-indigo-600 transition-colors" title={p.clientContact.email}>
+                                                {p.clientContact.email}
+                                              </span>
+                                            )}
+                                            {p.clientContact?.phone && (
+                                              <span className="text-[9px] text-slate-400">{p.clientContact.phone}</span>
+                                            )}
+                                          </div>
+                                        </td>
+
+                                        {/* Date Created */}
+                                        <td className="px-2 py-2.5 whitespace-nowrap text-[10px] font-bold text-slate-500">
+                                          {p.createdAt || 'N/A'}
+                                        </td>
+
+                                        {/* Actions */}
+                                        <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                                          <div className="flex items-center justify-end gap-1.5">
+                                            <button
+                                              onClick={() => {
+                                                setEditingProject(p);
+                                                setEditProjectName(p.projectName);
+                                                setEditProjectClientName(p.clientContact?.name || '');
+                                                setEditProjectClientEmail(p.clientContact?.email || '');
+                                                setEditProjectClientPhone(p.clientContact?.phone || '');
+                                                setEditProjectPhaseIndex(p.currentPhaseIndex);
+                                                setRegStatus(null);
+                                              }}
+                                              type="button"
+                                              className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                                              title="Edit project structure overrides"
+                                            >
+                                              <Edit2 size={12} />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteProject(p.id)}
+                                              type="button"
+                                              className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-650 transition-colors cursor-pointer"
+                                              title="Remove project draft track"
+                                            >
+                                              <Trash2 size={12} />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Pagination controls */}
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3.5 border-t border-slate-100 mt-4 shrink-0 font-sans">
+                              <span className="text-[10px] text-slate-550 font-bold font-sans">
+                                Showing <span className="font-extrabold text-slate-700">{startIndex + 1}</span> to{' '}
+                                <span className="font-extrabold text-slate-700">{Math.min(startIndex + adminProjectLimit, totalItems)}</span> of{' '}
+                                <span className="font-extrabold text-slate-900">{totalItems}</span> items
+                              </span>
+
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={currentPageAdjusted === 1}
+                                  onClick={() => setAdminProjectPage((pg) => Math.max(1, pg - 1))}
+                                  className="px-2.5 py-1 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 rounded-lg select-none disabled:opacity-45 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer transition-all"
+                                >
+                                  Previous
+                                </button>
+
+                                {Array.from({ length: totalPages }).map((_, i) => {
+                                  const pageNumber = i + 1;
+                                  return (
+                                    <button
+                                      key={pageNumber}
+                                      type="button"
+                                      onClick={() => setAdminProjectPage(pageNumber)}
+                                      className={`w-5.5 h-5.5 rounded-lg flex items-center justify-center text-[10px] font-black select-none transition-all cursor-pointer ${
+                                        currentPageAdjusted === pageNumber
+                                          ? 'bg-slate-900 text-white shadow-xs'
+                                          : 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-600'
+                                      }`}
+                                    >
+                                      {pageNumber}
+                                    </button>
+                                  );
+                                })}
+
+                                <button
+                                  type="button"
+                                  disabled={currentPageAdjusted === totalPages}
+                                  onClick={() => setAdminProjectPage((pg) => Math.min(totalPages, pg + 1))}
+                                  className="px-2.5 py-1 text-[10px] font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 rounded-lg select-none disabled:opacity-45 disabled:hover:bg-white disabled:cursor-not-allowed cursor-pointer transition-all"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {adminTab === 'genres' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start h-full text-slate-700">
+                  {/* Left Form: Add/Edit Genre */}
+                  <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                    <div>
+                      <h4 className="text-xs font-black text-amber-700 tracking-wider uppercase">
+                        {editingCategoryId && categoryFormType === 'genre' ? 'Edit Genre Category' : 'Create Book Genre Category'}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Add, rename, or save book genres for project specification briefs.</p>
+                    </div>
+
+                    <form onSubmit={handleSaveCategory} className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Genre Name</label>
+                        <input
+                          type="text"
+                          value={categoryFormName}
+                          onChange={(e) => {
+                            setCategoryFormType('genre');
+                            setCategoryFormName(e.target.value);
+                          }}
+                          placeholder="e.g. Religion & Islamic Books"
+                          className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Description (Optional)</label>
+                        <textarea
+                          value={categoryFormDescription}
+                          onChange={(e) => {
+                            setCategoryFormType('genre');
+                            setCategoryFormDescription(e.target.value);
+                          }}
+                          placeholder="A short description explaining this genre's scope..."
+                          rows={3}
+                          className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-slate-850 resize-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-slate-100 justify-end">
+                        {editingCategoryId && categoryFormType === 'genre' && (
+                          <button
+                            onClick={() => {
+                              setEditingCategoryId(null);
+                              setCategoryFormName('');
+                              setCategoryFormDescription('');
+                              setCategoryStatus(null);
+                            }}
+                            type="button"
+                            className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                          >
+                            Cancel Edit
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus size={13} />
+                          <span>{editingCategoryId && categoryFormType === 'genre' ? 'Save Changes' : 'Add Genre'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Right: List of Genres */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-extrabold text-[#0c6b54] tracking-wider uppercase font-sans">Active Genre Records ({genreCategories.length})</h4>
+                      <p className="text-[9px] text-slate-400 italic">Preloaded collections</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                      {genreCategories.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic text-center p-6 font-sans">No genre categories found.</p>
+                      ) : (
+                        genreCategories.map((genre) => (
+                          <div key={genre.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-start justify-between hover:border-slate-300 transition-colors shadow-2xs hover:shadow-xs">
+                            <div className="flex flex-col gap-1 max-w-[75%]">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                                <span className="text-xs font-bold text-slate-800 font-sans">{genre.name}</span>
+                              </div>
+                              {genre.description && (
+                                <p className="text-[10px] text-slate-450 font-medium pl-4 leading-relaxed break-words font-sans">{genre.description}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 self-center">
+                              <button
+                                onClick={() => handleEditCategory(genre, 'genre')}
+                                type="button"
+                                className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-850 cursor-pointer transition-colors"
+                                title="Edit category details"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCategory(genre, 'genre')}
+                                type="button"
+                                className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-650 cursor-pointer transition-colors"
+                                title="Delete category"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {adminTab === 'markets' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start h-full text-slate-700">
+                  {/* Left Form: Add/Edit Market */}
+                  <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                    <div>
+                      <h4 className="text-xs font-black text-pink-700 tracking-wider uppercase">
+                        {editingCategoryId && categoryFormType === 'market' ? 'Edit Market Category' : 'Create Market Category'}
+                      </h4>
+                      <p className="text-[10px] text-slate-500 font-medium">Add, rename, or save market divisions for system requirements.</p>
+                    </div>
+
+                    <form onSubmit={handleSaveCategory} className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Market Name</label>
+                        <input
+                          type="text"
+                          value={categoryFormName}
+                          onChange={(e) => {
+                            setCategoryFormType('market');
+                            setCategoryFormName(e.target.value);
+                          }}
+                          placeholder="e.g. Trade Books"
+                          className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Description (Optional)</label>
+                        <textarea
+                          value={categoryFormDescription}
+                          onChange={(e) => {
+                            setCategoryFormType('market');
+                            setCategoryFormDescription(e.target.value);
+                          }}
+                          placeholder="A short description explaining this market's target audience..."
+                          rows={3}
+                          className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-slate-855 resize-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2 border-t border-slate-100 justify-end">
+                        {editingCategoryId && categoryFormType === 'market' && (
+                          <button
+                            onClick={() => {
+                              setEditingCategoryId(null);
+                              setCategoryFormName('');
+                              setCategoryFormDescription('');
+                              setCategoryStatus(null);
+                            }}
+                            type="button"
+                            className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-705 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                          >
+                            Cancel Edit
+                          </button>
+                        )}
+                        <button
+                          type="submit"
+                          className="px-4 py-1.5 bg-pink-600 hover:bg-pink-700 text-white font-black text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus size={13} />
+                          <span>{editingCategoryId && categoryFormType === 'market' ? 'Save Changes' : 'Add Market'}</span>
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Right: List of Markets */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[10px] font-extrabold text-[#0c6b54] tracking-wider uppercase font-sans">Active Market Divisions ({marketCategories.length})</h4>
+                      <p className="text-[9px] text-slate-400 italic font-sans">Preloaded divisions</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                      {marketCategories.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic text-center p-6 font-sans">No market categories found.</p>
+                      ) : (
+                        marketCategories.map((market) => (
+                          <div key={market.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-start justify-between hover:border-slate-300 transition-colors shadow-2xs hover:shadow-xs">
+                            <div className="flex flex-col gap-1 max-w-[75%]">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+                                <span className="text-xs font-bold text-slate-800 font-sans">{market.name}</span>
+                              </div>
+                              {market.description && (
+                                <p className="text-[10px] text-slate-455 font-medium pl-4 leading-relaxed break-words font-sans">{market.description}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 self-center font-sans">
+                              <button
+                                onClick={() => handleEditCategory(market, 'market')}
+                                type="button"
+                                className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-850 cursor-pointer transition-colors"
+                                title="Edit category details"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCategory(market, 'market')}
+                                type="button"
+                                className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-650 cursor-pointer transition-colors"
+                                title="Delete category"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+      ) : (
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
         {/* ======================================================== */}
         {/* NEW PROJECT ENTRY DRAWER SHOWN IN-LINE IF OPENED */}
@@ -1193,13 +2474,11 @@ export default function App() {
                   <select
                     value={newProjectGenre}
                     onChange={e => setNewProjectGenre(e.target.value)}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 cursor-pointer"
+                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 cursor-pointer focus:outline-hidden"
                   >
-                    <option value="Historical Fiction">Historical Fiction</option>
-                    <option value="Biography / Memoir">Biography / Memoir</option>
-                    <option value="Technical / Programming">Technical / Programming</option>
-                    <option value="Photography / Landscape Art">Photography / Landscape Art</option>
-                    <option value="Business / Leadership">Business / Leadership</option>
+                    {genreCategories.map(genre => (
+                      <option key={genre.id} value={genre.name}>{genre.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -1245,7 +2524,7 @@ export default function App() {
           <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
             <div>
               <span className="text-[10px] font-extrabold tracking-widest text-emerald-400 uppercase">Enterprise Status Map</span>
-              <h3 className="text-base font-display font-extrabold mt-0.5">Rene Turos Production Board</h3>
+              <h3 className="text-base font-display font-extrabold mt-0.5">Milestone Production Board</h3>
             </div>
 
             <span className="text-xs font-mono text-slate-400">
@@ -1342,13 +2621,12 @@ export default function App() {
                 <select
                   value={filterGenre}
                   onChange={e => setFilterGenre(e.target.value)}
-                  className="text-[11px] bg-transparent font-bold border-none text-slate-600 focus:outline-none cursor-pointer"
+                  className="text-[11px] bg-transparent font-bold border-none text-slate-600 focus:outline-none cursor-pointer focus:outline-hidden"
                 >
                   <option value="All">All Genres</option>
-                  <option value="Historical Fiction">Historical Fiction</option>
-                  <option value="Biography / Memoir">Biography / Memoir</option>
-                  <option value="Technical / Programming">Technical</option>
-                  <option value="Photography / Landscape Art">Photography</option>
+                  {genreCategories.map(genre => (
+                    <option key={genre.id} value={genre.name}>{genre.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1464,8 +2742,8 @@ export default function App() {
 
             {/* Quick Informational help card */}
             <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-2xs leading-relaxed text-[11px] text-slate-500">
-              <span className="font-extrabold text-slate-700 block mb-1 uppercase tracking-wider">RENE TUROS SYSTEMS</span>
-              The Rene Turos Book Production Manager acts as an enterprise single point of coordinates. Record prospect visits, finalize estimates, compile chapter status, track mock print dummies, and configure commemorative trophies.
+              <span className="font-extrabold text-slate-700 block mb-1 uppercase tracking-wider">MILESTONE SYSTEMS</span>
+              The Milestone Book Production Manager acts as an enterprise single point of coordinates. Record prospect visits, finalize estimates, compile chapter status, track mock print dummies, and configure commemorative trophies.
             </div>
 
           </div>
@@ -1537,6 +2815,8 @@ export default function App() {
                   onChangeProject={handleUpdateActiveProject}
                   viewingPhaseIndex={viewingPhaseIndex}
                   userProfile={userProfile}
+                  genreCategories={genreCategories}
+                  marketCategories={marketCategories}
                 />
 
               </div>
@@ -1572,12 +2852,13 @@ export default function App() {
         </div>
 
       </main>
+      )}
 
       {/* 5. FOOTER */}
       <footer className="bg-white border-t border-slate-200 mt-12 py-6">
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <p className="text-xs text-slate-400 font-medium">
-            © 2026 Rene Turos Group. All editorial rights reserved. Managed & monitored securely in the cloud workspace coordinate system.
+            © 2026 Milestone Group. All editorial rights reserved. Managed & monitored securely in the cloud workspace coordinate system.
           </p>
           <p className="text-[10px] text-slate-350 font-mono">
             System build v1.4.15
@@ -1589,7 +2870,7 @@ export default function App() {
       {/* ADMIN PANEL - TWO-TAB SYSTEM CONSOLE MODAL (USERS + PROJECTS CRUD) */}
       {/* ======================================================== */}
       <AnimatePresence>
-        {showAdminPanel && (
+        {false && (
           <div key="admin-panel-modal" className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 font-sans selection:bg-slate-900 selection:text-white">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -1639,6 +2920,34 @@ export default function App() {
                       <span>Projects Directory ({projects.length})</span>
                     </div>
                   </button>
+                  <button
+                    onClick={() => { setAdminTab('genres'); setRegStatus(null); }}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      adminTab === 'genres' 
+                        ? 'bg-white text-slate-900 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Tag size={12} />
+                      <span>Book Genres ({genreCategories.length})</span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { setAdminTab('markets'); setRegStatus(null); }}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      adminTab === 'markets' 
+                        ? 'bg-white text-slate-900 shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Layers size={12} />
+                      <span>Market Categories ({marketCategories.length})</span>
+                    </div>
+                  </button>
                 </div>
 
                 <button
@@ -1660,9 +2969,19 @@ export default function App() {
                 <div className={`mx-6 mt-4 p-3 rounded-xl text-xs font-bold shrink-0 ${
                   regStatus.type === 'success' 
                     ? 'bg-emerald-50 border border-emerald-150 text-emerald-800' 
-                    : 'bg-red-50 border border-red-150 text-red-00'
+                    : 'bg-red-50 border border-red-150 text-red-650'
                 }`}>
                   {regStatus.message}
+                </div>
+              )}
+
+              {categoryStatus && (
+                <div className={`mx-6 mt-4 p-3 rounded-xl text-xs font-bold shrink-0 ${
+                  categoryStatus.type === 'success' 
+                    ? 'bg-emerald-50 border border-emerald-150 text-emerald-800' 
+                    : 'bg-red-50 border border-red-155 text-red-600'
+                }`}>
+                  {categoryStatus.message}
                 </div>
               )}
 
@@ -2131,6 +3450,244 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+                {adminTab === 'genres' && (
+                  /* ======================================================== */
+                  /* TAB 3: BOOK GENRE CATEGORIES CRUD */
+                  /* ======================================================== */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start h-full text-slate-700">
+                    {/* Left Form: Add/Edit Genre */}
+                    <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                      <div>
+                        <h4 className="text-xs font-black text-amber-700 tracking-wider uppercase">
+                          {editingCategoryId && categoryFormType === 'genre' ? 'Edit Genre Category' : 'Create Book Genre Category'}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-medium">Add, rename, or save book genres for project specification briefs.</p>
+                      </div>
+
+                      <form onSubmit={handleSaveCategory} className="space-y-3.5">
+                        <div className="space-y-1">
+                          <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Genre Name</label>
+                          <input
+                            type="text"
+                            value={categoryFormName}
+                            onChange={(e) => {
+                              setCategoryFormType('genre');
+                              setCategoryFormName(e.target.value);
+                            }}
+                            placeholder="e.g. Religion & Islamic Books"
+                            className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Description (Optional)</label>
+                          <textarea
+                            value={categoryFormDescription}
+                            onChange={(e) => {
+                              setCategoryFormType('genre');
+                              setCategoryFormDescription(e.target.value);
+                            }}
+                            placeholder="A short description explaining this genre's scope..."
+                            rows={3}
+                            className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-slate-850 resize-none"
+                          />
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t border-slate-100 justify-end">
+                          {editingCategoryId && categoryFormType === 'genre' && (
+                            <button
+                              onClick={() => {
+                                setEditingCategoryId(null);
+                                setCategoryFormName('');
+                                setCategoryFormDescription('');
+                                setCategoryStatus(null);
+                              }}
+                              type="button"
+                              className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-705 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                            >
+                              Cancel Edit
+                            </button>
+                          )}
+                          <button
+                            type="submit"
+                            className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus size={13} />
+                            <span>{editingCategoryId && categoryFormType === 'genre' ? 'Save Changes' : 'Add genre'}</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+                    {/* Right: List of Genres */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-extrabold text-[#0c6b54] tracking-wider uppercase">Active Genre Records ({genreCategories.length})</h4>
+                        <p className="text-[9px] text-slate-400 italic">Preloaded collections</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        {genreCategories.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic text-center p-6">No genre categories found.</p>
+                        ) : (
+                          genreCategories.map((genre) => (
+                            <div key={genre.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-start justify-between hover:border-slate-300 transition-colors shadow-2xs hover:shadow-xs">
+                              <div className="flex flex-col gap-1 max-w-[75%]">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                                  <span className="text-xs font-bold text-slate-800 font-sans">{genre.name}</span>
+                                </div>
+                                {genre.description && (
+                                  <p className="text-[10px] text-slate-450 font-medium pl-4 leading-relaxed break-words">{genre.description}</p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5 self-center">
+                                <button
+                                  onClick={() => handleEditCategory(genre, 'genre')}
+                                  type="button"
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-850 cursor-pointer transition-colors"
+                                  title="Edit category details"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCategory(genre, 'genre')}
+                                  type="button"
+                                  className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-650 cursor-pointer transition-colors"
+                                  title="Delete category"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {adminTab === 'markets' && (
+                  /* ======================================================== */
+                  /* TAB 4: MARKET CATEGORIES CRUD */
+                  /* ======================================================== */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start h-full text-slate-700">
+                    {/* Left Form: Add/Edit Market */}
+                    <div className="bg-slate-50/45 border border-slate-200 p-4.5 rounded-xl space-y-4">
+                      <div>
+                        <h4 className="text-xs font-black text-pink-700 tracking-wider uppercase">
+                          {editingCategoryId && categoryFormType === 'market' ? 'Edit Market Category' : 'Create Market Category'}
+                        </h4>
+                        <p className="text-[10px] text-slate-500 font-medium">Add, rename, or save market divisions for system requirements.</p>
+                      </div>
+
+                      <form onSubmit={handleSaveCategory} className="space-y-3.5">
+                        <div className="space-y-1">
+                          <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Market Name</label>
+                          <input
+                            type="text"
+                            value={categoryFormName}
+                            onChange={(e) => {
+                              setCategoryFormType('market');
+                              setCategoryFormName(e.target.value);
+                            }}
+                            placeholder="e.g. Trade Books"
+                            className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-slate-850"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="block text-[9px] font-extrabold text-slate-400 uppercase tracking-wider">Description (Optional)</label>
+                          <textarea
+                            value={categoryFormDescription}
+                            onChange={(e) => {
+                              setCategoryFormType('market');
+                              setCategoryFormDescription(e.target.value);
+                            }}
+                            placeholder="A short description explaining this market's target audience..."
+                            rows={3}
+                            className="w-full bg-white border border-slate-250 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 outline-none focus:border-slate-850 resize-none"
+                          />
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t border-slate-100 justify-end">
+                          {editingCategoryId && categoryFormType === 'market' && (
+                            <button
+                              onClick={() => {
+                                setEditingCategoryId(null);
+                                setCategoryFormName('');
+                                setCategoryFormDescription('');
+                                setCategoryStatus(null);
+                              }}
+                              type="button"
+                              className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-705 font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                            >
+                              Cancel Edit
+                            </button>
+                          )}
+                          <button
+                            type="submit"
+                            className="px-4 py-1.5 bg-pink-600 hover:bg-pink-700 text-white font-black text-xs rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Plus size={13} />
+                            <span>{editingCategoryId && categoryFormType === 'market' ? 'Save Changes' : 'Add market'}</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+
+                    {/* Right: List of Markets */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-extrabold text-[#0c6b54] tracking-wider uppercase">Active Market Divisions ({marketCategories.length})</h4>
+                        <p className="text-[9px] text-slate-400 italic">Preloaded divisions</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        {marketCategories.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic text-center p-6">No market categories found.</p>
+                        ) : (
+                          marketCategories.map((market) => (
+                            <div key={market.id} className="p-3 bg-white border border-slate-200 rounded-xl flex items-start justify-between hover:border-slate-300 transition-colors shadow-2xs hover:shadow-xs">
+                              <div className="flex flex-col gap-1 max-w-[75%]">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-pink-500 shrink-0" />
+                                  <span className="text-xs font-bold text-slate-800 font-sans">{market.name}</span>
+                                </div>
+                                {market.description && (
+                                  <p className="text-[10px] text-slate-450 font-medium pl-4 leading-relaxed break-words">{market.description}</p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-1.5 self-center">
+                                <button
+                                  onClick={() => handleEditCategory(market, 'market')}
+                                  type="button"
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-850 cursor-pointer transition-colors"
+                                  title="Edit category details"
+                                >
+                                  <Edit2 size={12} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCategory(market, 'market')}
+                                  type="button"
+                                  className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-650 cursor-pointer transition-colors"
+                                  title="Delete category"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </motion.div>
@@ -2281,19 +3838,31 @@ export default function App() {
 
               <div className="p-3.5 bg-red-50/50 border border-red-100 rounded-xl space-y-2 text-xs text-slate-700">
                 <p className="leading-relaxed">
-                  Are you absolutely sure you want to permanently delete this {deleteTarget.type === 'user' ? 'colleague registration account' : 'corporate book project draft'}?
+                  Are you absolutely sure you want to permanently delete this {
+                    deleteTarget.type === 'user' ? 'colleague registration account' : 
+                    deleteTarget.type === 'project' ? 'corporate book project draft' :
+                    deleteTarget.type === 'genre' ? 'book genre category' : 'market category'
+                  }?
                 </p>
                 <div className="p-2.5 bg-white border border-red-150 rounded-lg flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${deleteTarget.type === 'user' ? 'bg-indigo-600' : 'bg-emerald-600'}`} />
+                  <div className={`w-2 h-2 rounded-full ${
+                    deleteTarget.type === 'user' ? 'bg-indigo-600' : 
+                    deleteTarget.type === 'project' ? 'bg-emerald-600' :
+                    deleteTarget.type === 'genre' ? 'bg-amber-500' : 'bg-pink-500'
+                  }`} />
                   <span className="font-mono font-black text-slate-800 break-all">{deleteTarget.displayName}</span>
                 </div>
                 {deleteTarget.type === 'user' ? (
                   <p className="text-[9.5px] text-red-600 font-bold leading-normal">
                     ⚠️ The colleague will immediately lose system registry credentials and cannot sign back in.
                   </p>
-                ) : (
+                ) : deleteTarget.type === 'project' ? (
                   <p className="text-[9.5px] text-red-600 font-bold leading-normal">
                     ⚠️ All dynamic phases, brief notes, and printing configurations for this book will be permanently shredded.
+                  </p>
+                ) : (
+                  <p className="text-[9.5px] text-red-600 font-bold leading-normal">
+                    ⚠️ The category will be permanently removed. Active book projects using this category will retain their selection text, but it will be removed from future selection options.
                   </p>
                 )}
               </div>
@@ -2310,8 +3879,10 @@ export default function App() {
                   onClick={async () => {
                     if (deleteTarget.type === 'user') {
                       await executeDeleteUser(deleteTarget.id);
-                    } else {
+                    } else if (deleteTarget.type === 'project') {
                       await executeDeleteProject(deleteTarget.id);
+                    } else {
+                      await executeDeleteCategory(deleteTarget.id, deleteTarget.type);
                     }
                   }}
                   type="button"
@@ -2325,6 +3896,21 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Global Image Crop Modal */}
+      <ImageCropModal
+        isOpen={cropperOpen}
+        onClose={() => {
+          setCropperOpen(false);
+          setCropperSource('');
+        }}
+        imageSrc={cropperSource}
+        onCropSave={(croppedBase64) => {
+          if (cropperCallback) {
+            cropperCallback(croppedBase64);
+          }
+        }}
+      />
 
     </div>
   );

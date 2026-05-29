@@ -242,3 +242,16 @@ export interface BookProject {
   printing: PrintingDetails;
   finalArtwork: FinalArtworkDetails;
 }
+
+export interface BookGenreCategory {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface MarketCategory {
+  id: string;
+  name: string;
+  description?: string;
+}
+

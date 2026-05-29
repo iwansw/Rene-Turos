@@ -46,6 +46,44 @@ service cloud.firestore {
       // Allow project deletions
       allow delete: if isValidId(projectId);
     }
+
+    // Book genres collection
+    match /genres/{genreId} {
+      // Allow general read/list access
+      allow read, list: if isValidId(genreId);
+
+      // Allow creating and editing genre categories
+      allow create, update: if isValidId(genreId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 200
+        && (
+          !('description' in request.resource.data) || 
+          request.resource.data.description is string
+        );
+
+      // Allow deletion
+      allow delete: if isValidId(genreId);
+    }
+
+    // Market / Target Industry categories collection
+    match /market_categories/{categoryId} {
+      // Allow general read/list access
+      allow read, list: if isValidId(categoryId);
+
+      // Allow creating and editing target market categories
+      allow create, update: if isValidId(categoryId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 200
+        && (
+          !('description' in request.resource.data) || 
+          request.resource.data.description is string
+        );
+
+      // Allow deletion
+      allow delete: if isValidId(categoryId);
+    }
   }
 }
 

@@ -16,8 +16,11 @@ import {
   TimelineTask,
   ChapterProgress,
   EndorsementQuote,
-  CoverProposal
+  CoverProposal,
+  BookGenreCategory,
+  MarketCategory
 } from '../types';
+import { DEFAULT_GENRES, DEFAULT_MARKETS } from '../defaultCategories';
 import { 
   User, Mail, Phone, Calendar, Clock, MapPin, CheckCircle2, AlertCircle, Plus, Trash2, 
   ChevronRight, FileText, DollarSign, PenTool, Layout, Check, BookOpen, ShieldCheck, 
@@ -33,6 +36,8 @@ interface PhaseDetailFormProps {
   onChangeProject: (updated: BookProject) => void;
   viewingPhaseIndex: number; // 0 to 9 representing active selected tab
   userProfile?: any;
+  genreCategories?: BookGenreCategory[];
+  marketCategories?: MarketCategory[];
 }
 
 const DEFAULT_ROLES = [
@@ -58,7 +63,9 @@ export default function PhaseDetailForm({
   project,
   onChangeProject,
   viewingPhaseIndex,
-  userProfile
+  userProfile,
+  genreCategories = [],
+  marketCategories = []
 }: PhaseDetailFormProps) {
 
   // Local helper states for dynamic additions
@@ -477,7 +484,7 @@ export default function PhaseDetailForm({
                       value={project.prospect.meetingLocation}
                       onChange={(e) => updateProject(draft => { draft.prospect.meetingLocation = e.target.value; })}
                       className="w-full text-sm bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-slate-850"
-                      placeholder="e.g. Rene Turos Offices / Google Meet sync"
+                      placeholder="e.g. Milestone Offices / Google Meet sync"
                     />
                   </div>
                 </div>
@@ -822,26 +829,39 @@ export default function PhaseDetailForm({
                 <select
                   value={project.requirementBrief.bookGenre}
                   onChange={(e) => updateProject(draft => { draft.requirementBrief.bookGenre = e.target.value; })}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-800 font-semibold"
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-800 font-semibold focus:outline-hidden"
                 >
-                  <option value="Historical Fiction">Historical Fiction</option>
-                  <option value="Biography / Memoir">Biography / Memoir</option>
-                  <option value="Technical / Programming">Technical / Programming</option>
-                  <option value="Photography / Landscape Art">Photography / Landscape Photography</option>
-                  <option value="Business / Leadership">Business / Leadership</option>
-                  <option value="Poetry Anthologies">Poetry Anthologies</option>
+                  {(() => {
+                    const list = [...(genreCategories.length > 0 ? genreCategories : DEFAULT_GENRES)];
+                    const activeVal = project.requirementBrief.bookGenre;
+                    if (activeVal && !list.some(g => g.name === activeVal)) {
+                      list.push({ id: 'active-temp-genre', name: activeVal });
+                    }
+                    return list.map(g => (
+                      <option key={g.id} value={g.name}>{g.name}</option>
+                    ));
+                  })()}
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">TARGET AUDIENCE INDEX</label>
-                <input
-                  type="text"
+                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">MARKET CATEGORY</label>
+                <select
                   value={project.requirementBrief.targetAudience}
                   onChange={(e) => updateProject(draft => { draft.requirementBrief.targetAudience = e.target.value; })}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
-                  placeholder="e.g. Young adult readers, Tech professionals"
-                />
+                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-800 font-semibold focus:outline-hidden"
+                >
+                  {(() => {
+                    const list = [...(marketCategories.length > 0 ? marketCategories : DEFAULT_MARKETS)];
+                    const activeVal = project.requirementBrief.targetAudience;
+                    if (activeVal && !list.some(m => m.name === activeVal)) {
+                      list.push({ id: 'active-temp-market', name: activeVal });
+                    }
+                    return list.map(m => (
+                      <option key={m.id} value={m.name}>{m.name}</option>
+                    ));
+                  })()}
+                </select>
               </div>
             </div>
 
@@ -1140,7 +1160,7 @@ export default function PhaseDetailForm({
             <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
               <Sparkles className="text-amber-600 mt-0.5 shrink-0" size={16} />
               <div>
-                <strong>Rene Turos Creative Suggestion:</strong> For <em>{project.requirementBrief.bookGenre}</em> books targeting <em>{project.requirementBrief.targetAudience || 'mass markets'}</em>, we highly recommend focusing on detailed chapter headers and considering a 120gsm matte text stock paper rather than basic cream pulp to elevate overall typography readability.
+                <strong>Milestone Creative Suggestion:</strong> For <em>{project.requirementBrief.bookGenre}</em> books targeting <em>{project.requirementBrief.targetAudience || 'mass markets'}</em>, we highly recommend focusing on detailed chapter headers and considering a 120gsm matte text stock paper rather than basic cream pulp to elevate overall typography readability.
               </div>
             </div>
           </div>
@@ -1533,7 +1553,7 @@ export default function PhaseDetailForm({
             {/* Header info */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-700">Rene Turos Publishing Service Bundle Costing</h4>
+                <h4 className="text-sm font-bold text-slate-700">Milestone Publishing Service Bundle Costing</h4>
                 <p className="text-xs text-slate-400 mt-0.5">Check service layers to compute the official project proposal value.</p>
               </div>
 
@@ -1992,7 +2012,7 @@ export default function PhaseDetailForm({
 
                   <div className="text-[11px] text-slate-600 space-y-2 font-serif leading-relaxed max-h-[220px] overflow-y-auto pr-1">
                     <p>
-                      <strong>PARTIES:</strong> This binding contract is entered into on this day between <strong>Rene Turos Editorial Group</strong> and the client representative <strong>{project.clientContact.name || '(N/A)'}</strong>.
+                      <strong>PARTIES:</strong> This binding contract is entered into on this day between <strong>Milestone Editorial Group</strong> and the client representative <strong>{project.clientContact.name || '(N/A)'}</strong>.
                     </p>
                     <p>
                       <strong>CONSIDERATION:</strong> Publisher shall furnish full structural formatting, bespoke dust jacket designs, ISBN records, and premium printed books.
@@ -2008,7 +2028,7 @@ export default function PhaseDetailForm({
 
                 <div className="pt-4 border-t border-slate-200/60 mt-4 text-[10px] text-slate-500 flex justify-between">
                   <div>
-                    <span className="block font-bold">Rene Turos Director</span>
+                    <span className="block font-bold">Milestone Director</span>
                     <span className="block text-[9px] italic text-slate-400">Luqman Hakim Arifin</span>
                   </div>
                   <div className="text-right">
@@ -3615,7 +3635,7 @@ export default function PhaseDetailForm({
               projectName={project.creativeBrief.proposedBookTitle || project.projectName}
               recipientName={project.finalArtwork.trophyRecipientName || project.clientContact.name}
               designation={project.finalArtwork.trophyDesignation || `Recipient Author`}
-              plaqueText={project.finalArtwork.trophyPlaqueText || `Honoring the excellent production of "${project.projectName}". Published in exquisitely crafted fine print under the Rene Turos seal.`}
+              plaqueText={project.finalArtwork.trophyPlaqueText || `Honoring the excellent production of "${project.projectName}". Published in exquisitely crafted fine print under the Milestone seal.`}
               onChangeRecipient={(v) => updateProject(draft => { draft.finalArtwork.trophyRecipientName = v; })}
               onChangeDesignation={(v) => updateProject(draft => { draft.finalArtwork.trophyDesignation = v; })}
               onChangePlaqueText={(v) => updateProject(draft => { draft.finalArtwork.trophyPlaqueText = v; })}

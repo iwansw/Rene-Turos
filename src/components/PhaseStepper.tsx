@@ -25,7 +25,7 @@ export default function PhaseStepper({
             Production Stage Pipeline
           </h4>
           <p className="text-xs text-slate-500 mt-1">
-            Track and advance the project's official lifecycle across Rene Turos' 10 core phases.
+            Track and advance the project's official lifecycle across Milestone's 10 core phases.
           </p>
         </div>
 

@@ -27,14 +27,14 @@ export const INITIAL_PROJECTS: BookProject[] = [
     prospect: {
       meetingDate: '2026-05-02',
       meetingTime: '10:00',
-      meetingLocation: 'Rene Turos Editorial Suites, Board Room A',
+      meetingLocation: 'Milestone Editorial Suites, Board Room A',
       noted: true,
       status: ProspectStatus.PROCEED
     },
     requirementBrief: {
       briefNotes: 'Intimate historical fiction novel set in 19th-century Oregon. Desires premium cream paper stock with custom forest illustrations. Target page count is ~320 pages. Budget around Rp 180.000.005 for a first run of 500 hardcover copies.',
       briefDate: '2026-05-03',
-      targetAudience: 'Historical fiction enthusiasts, lovers of nature literature and scenic prose.',
+      targetAudience: 'Trade Books',
       bookGenre: 'Historical Fiction'
     },
     creativeBrief: {
@@ -60,7 +60,7 @@ export const INITIAL_PROJECTS: BookProject[] = [
     closing: {
       finalAmount: 187500000,
       contractStatus: ContractStatus.SIGNED,
-      contractDraftText: 'This Publishing Services Contract is made on May 8, 2026, between Rene Turos Group (Publisher) and Arthur Green (Author/Client) for the production of "The Whispering Pines". The Publisher agrees to furnish full professional editing, interior formatting, custom spine tooling, and premium hardcover printing. Total due: IDR 187.500.000. Signed and validated electronically.',
+      contractDraftText: 'This Publishing Services Contract is made on May 8, 2026, between Milestone Group (Publisher) and Arthur Green (Author/Client) for the production of "The Whispering Pines". The Publisher agrees to furnish full professional editing, interior formatting, custom spine tooling, and premium hardcover printing. Total due: IDR 187.500.000. Signed and validated electronically.',
       signedDate: '2026-05-08',
       signingRepresentative: 'Arthur Green (Authorized Signee)'
     },
@@ -95,7 +95,7 @@ export const INITIAL_PROJECTS: BookProject[] = [
       ],
       proofreadingStatus: TaskStatus.IN_PROGRESS,
       endorsements: [
-        { id: 'end-1', author: 'Sarah Vance', title: 'Award-winning Historical Novelist', quote: 'A gorgeous, sensory voyage. Rene Turos has packaged a masterpiece of pacing in a binder that matches its elegant prose.', approved: true },
+        { id: 'end-1', author: 'Sarah Vance', title: 'Award-winning Historical Novelist', quote: 'A gorgeous, sensory voyage. Milestone has packaged a masterpiece of pacing in a binder that matches its elegant prose.', approved: true },
         { id: 'end-2', author: 'Dr. Alistair Finch', title: 'Historian & Literary Reviewer', quote: 'Brilliantly detailed and true to the era. The physical print details feel as authentic as the story itself.', approved: true }
       ],
       isbnStatus: ISBNStatus.ISSUED,
@@ -124,11 +124,11 @@ export const INITIAL_PROJECTS: BookProject[] = [
     finalArtwork: {
       softcopySent: false,
       softcopySentDate: '',
-      softcopyLink: 'https://storage.reneturos.com/books/whispering-pines-final.pdf',
+      softcopyLink: 'https://storage.milestonebooks.com/books/whispering-pines-final.pdf',
       trophyStatus: TrophyStatus.NONE,
       trophyRecipientName: 'Arthur Green',
       trophyDesignation: 'Author of "The Whispering Pines"',
-      trophyPlaqueText: 'In Honor of the Publication of "The Whispering Pines: Secrets of the Oregon Ridge". Crafted with care in cooperation with members of the Rene Turos Editorial Guild.'
+      trophyPlaqueText: 'In Honor of the Publication of "The Whispering Pines: Secrets of the Oregon Ridge". Crafted with care in cooperation with members of the Milestone Editorial Guild.'
     }
   },
   {
@@ -152,8 +152,8 @@ export const INITIAL_PROJECTS: BookProject[] = [
     requirementBrief: {
       briefNotes: 'Technical programming guide focusing on microservice design, Kubernetes native Java structures, and virtual threads. Requires clean monospaced layout, side-by-side code blocks, and an index. Estimated budget of Rp 225.000.000 for digital distribution and 300 premium paperback books.',
       briefDate: '2026-05-18',
-      targetAudience: 'Senior Software Engineers, Enterprise Team Leads, and Cloud Architects.',
-      bookGenre: 'Technical / Programming'
+      targetAudience: 'Professional Books',
+      bookGenre: 'Technology & ICT'
     },
     creativeBrief: {
       proposedBookTitle: 'Enterprise Design Patterns with Quarkus & JVM',
@@ -177,7 +177,7 @@ export const INITIAL_PROJECTS: BookProject[] = [
     closing: {
       finalAmount: 172500000,
       contractStatus: ContractStatus.DRAFT,
-      contractDraftText: 'Draft agreement: Rene Turos Group client-services for Java Advanced Architecture technical publication. Subject to change pending brief finalization.',
+      contractDraftText: 'Draft agreement: Milestone Group client-services for Java Advanced Architecture technical publication. Subject to change pending brief finalization.',
       signedDate: '',
       signingRepresentative: ''
     },
@@ -249,8 +249,8 @@ export const INITIAL_PROJECTS: BookProject[] = [
     requirementBrief: {
       briefNotes: 'Ultra luxury premium landscape photographic coffee table catalog displaying international eco-spherics. Needs brilliant glossy heavy photo stock paper. Case bound with special protective slipcase cover box.',
       briefDate: '2026-04-13',
-      targetAudience: 'Collectors of luxury landscape photography, gallery patrons, designer hotels.',
-      bookGenre: 'Photography / Landscape Art'
+      targetAudience: 'Trade Books',
+      bookGenre: 'Art & Photography'
     },
     creativeBrief: {
       proposedBookTitle: 'Echoes of Eternity: Visual Ecologies',
@@ -331,11 +331,11 @@ export const INITIAL_PROJECTS: BookProject[] = [
     finalArtwork: {
       softcopySent: true,
       softcopySentDate: '2026-05-16',
-      softcopyLink: 'https://storage.reneturos.com/books/vance-gallery-echoes.zip',
+      softcopyLink: 'https://storage.milestonebooks.com/books/vance-gallery-echoes.zip',
       trophyStatus: TrophyStatus.DELIVERED,
       trophyRecipientName: 'Clara Vance',
       trophyDesignation: 'Founder & Curator, Vance Contemporary Gallery',
-      trophyPlaqueText: 'Honoring "Echoes of Eternity: Visual Ecologies" by Clara Vance. Published in exquisite high-definition print. Presented by Rene Turos Group as a physical symbol of publishing excellence.'
+      trophyPlaqueText: 'Honoring "Echoes of Eternity: Visual Ecologies" by Clara Vance. Published in exquisite high-definition print. Presented by Milestone Group as a physical symbol of publishing excellence.'
     }
   }
 ];
