@@ -69,6 +69,9 @@ export default function PhaseDetailForm({
 }: PhaseDetailFormProps) {
 
   // Local helper states for dynamic additions
+  const [prospectSubTab, setProspectSubTab] = useState<'visit' | 'requirements'>('visit');
+  const [proposalSubTab, setProposalSubTab] = useState<'creative' | 'costing'>('creative');
+
   const [newChapterTitle, setNewChapterTitle] = useState('');
   const [newTeamRole, setNewTeamRole] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
@@ -116,6 +119,8 @@ export default function PhaseDetailForm({
     setEditingChapterIdx(null);
     setDeletingTeamRoleIdx(null);
     setNewFeedbackLog('');
+    setProspectSubTab('visit');
+    setProposalSubTab('creative');
   }, [project.id, viewingPhaseIndex]);
 
   // Synchronize available workspace teammates directly from the users collection
@@ -284,29 +289,25 @@ export default function PhaseDetailForm({
             
             <h2 className="text-2xl font-display font-extrabold mt-1 tracking-tight">
               {viewingPhaseIndex + 1}. {
-                viewingPhaseIndex === 0 ? 'New Book Project Setup' :
-                viewingPhaseIndex === 1 ? 'Prospect & Initial Visit' :
-                viewingPhaseIndex === 2 ? 'Requirement Briefing' :
-                viewingPhaseIndex === 3 ? 'Creative Concept Proposals' :
-                viewingPhaseIndex === 4 ? 'Publishing Proposal' :
-                viewingPhaseIndex === 5 ? 'Closing & Contracting' :
-                viewingPhaseIndex === 6 ? 'Pre-Production & Assignments' :
-                viewingPhaseIndex === 7 ? 'Production & Iterations' :
-                viewingPhaseIndex === 8 ? 'Printing & Press Run' :
+                viewingPhaseIndex === 0 ? 'New Project Idea Setup' :
+                viewingPhaseIndex === 1 ? 'Prospect & Requirements' :
+                viewingPhaseIndex === 2 ? 'Proposal & Service Costing' :
+                viewingPhaseIndex === 3 ? 'Closing & Contracting' :
+                viewingPhaseIndex === 4 ? 'Pre-Production & Assignments' :
+                viewingPhaseIndex === 5 ? 'Production & Iterations' :
+                viewingPhaseIndex === 6 ? 'Printing & Press Run' :
                 'Final Artwork Delivery'
               }
             </h2>
             <p className="text-xs text-slate-400 mt-1 max-w-xl">
-              {viewingPhaseIndex === 0 && "Kickstart a new literary venture. Establish core parameters and define primary stakeholder contacts."}
-              {viewingPhaseIndex === 1 && "Log and coordinate client visits, edit sales statuses, and prepare agendas for production talks."}
-              {viewingPhaseIndex === 2 && "Record essential requirements directly from the customer. Map out target readerships and print specifications."}
-              {viewingPhaseIndex === 3 && "Propose cover aesthetics, typography guidelines, and track client feedback on concept design drafts."}
-              {viewingPhaseIndex === 4 && "Review estimated publishing pricing, append service layers, and verify total estimated costs."}
-              {viewingPhaseIndex === 5 && "Solidify financial arrangements, generate high-fidelity electronic contracts, and seal terms."}
-              {viewingPhaseIndex === 6 && "Design outline chapters, construct team layout guides, and project schedules."}
-              {viewingPhaseIndex === 7 && "Monitor granular chapter statuses for text drafts, layout editing, proofreading, ISBN issues, and dust jacket art."}
-              {viewingPhaseIndex === 8 && "Coordinate with high-grade printing press houses, review proof outputs, and track boxes delivery."}
-              {viewingPhaseIndex === 9 && "Deliver softcopy final versions and configure the commemorative gold-plaited plaque."}
+              {viewingPhaseIndex === 0 && "Kickstart a new project idea. Establish core classification parameters and define client or key stakeholder contact info."}
+              {viewingPhaseIndex === 1 && "Log client visits, track sales status, and gather initial project specs and requirement briefs."}
+              {viewingPhaseIndex === 2 && "Propose cover design aesthetics, manage creative concept files, and compute service bundle costing proposal."}
+              {viewingPhaseIndex === 3 && "Solidify financial arrangements, generate high-fidelity electronic contracts, and seal terms."}
+              {viewingPhaseIndex === 4 && "Design outline chapters, construct team layout guides, and project schedules."}
+              {viewingPhaseIndex === 5 && "Monitor granular chapter statuses for text drafts, layout editing, proofreading, ISBN issues, and dust jacket art."}
+              {viewingPhaseIndex === 6 && "Coordinate with high-grade printing press houses, review proof outputs, and track boxes delivery."}
+              {viewingPhaseIndex === 7 && "Deliver softcopy final versions and configure the commemorative gold-plaited plaque."}
             </p>
           </div>
 
@@ -337,21 +338,37 @@ export default function PhaseDetailForm({
       <div id="form-inner-workspace" className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-6">
         
         {/* ======================================= */}
-        {/* PHASE 1: NEW BOOK PROJECT */}
+        {/* PHASE 1: NEW PROJECT IDEA */}
         {/* ======================================= */}
         {viewingPhaseIndex === 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="col-span-1 md:col-span-2">
-              <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider mb-1.5">Project Working Title</label>
-              <input
-                type="text"
-                value={project.projectName}
-                onChange={(e) => updateProject(draft => { draft.projectName = e.target.value; })}
-                className="w-full text-base font-semibold bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 focus:outline-none focus:border-slate-400 transition-colors"
-                placeholder="e.g. The Whispering Pines"
-              />
+            <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider mb-1.5">Project Working Title</label>
+                <input
+                  type="text"
+                  value={project.projectName}
+                  onChange={(e) => updateProject(draft => { draft.projectName = e.target.value; })}
+                  className="w-full text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-850 focus:outline-none focus:border-slate-400 transition-colors"
+                  placeholder="e.g. Chronicles of Indonesia"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider mb-1.5">Project Classification</label>
+                <select
+                  value={project.projectTypeSelection || 'Internal'}
+                  onChange={(e) => updateProject(draft => { draft.projectTypeSelection = e.target.value as any; })}
+                  className="w-full text-sm font-semibold bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-850 focus:outline-none focus:border-slate-400 transition-colors cursor-pointer"
+                >
+                  <option value="Internal">Internal</option>
+                  <option value="B to C">B to C (to Person/Individual)</option>
+                  <option value="B to B">B to B (to Corporate/Commercial)</option>
+                </select>
+              </div>
             </div>
 
+            {/* Client Stakeholder Contact */}
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4">
               <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
                 <User size={15} className="text-slate-400" />
@@ -394,50 +411,94 @@ export default function PhaseDetailForm({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4 flex flex-col justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
-                  <Calendar size={15} className="text-slate-400" />
-                  Meta Information
-                </h4>
-                
-                <div className="space-y-3 mt-3">
-                  <div>
-                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">CREATION RECORD DATE</label>
-                    <input
-                      type="date"
-                      value={project.createdAt}
-                      onChange={(e) => updateProject(draft => { draft.createdAt = e.target.value; })}
-                      className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">PROJECT CREATOR</label>
-                    <div className="flex items-center gap-2 w-full text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-600 font-semibold select-none">
-                      <User size={14} className="text-slate-400" />
-                      <span>
-                        {(() => {
-                          const matchedCreator = availableTeam.find((u) => u.uid === project.ownerId || u.username === project.creatorUsername);
-                          return project.creatorName || (matchedCreator ? matchedCreator.displayName : null) || (project.ownerId === 'usr_admin' ? 'System Admin' : 'Active Colleague');
-                        })()}
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">PROJECT REFERENCE ID</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={project.id}
-                      className="w-full text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 font-mono"
-                    />
-                  </div>
+            {/* Key Person Contact Information */}
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4">
+              <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
+                <ShieldCheck size={15} className="text-slate-400" />
+                Key Person Contact Information
+              </h4>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 block mb-1">KEY PERSON CONTACT NAME</label>
+                  <input
+                    type="text"
+                    value={project.keyPersonContact?.name || ''}
+                    onChange={(e) => updateProject(draft => { 
+                      if (!draft.keyPersonContact) draft.keyPersonContact = { name: '', phone: '', email: '' };
+                      draft.keyPersonContact.name = e.target.value; 
+                    })}
+                    className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-850 focus:outline-none focus:border-slate-400"
+                    placeholder="Dadang Sumarna"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 block mb-1">KEY PERSON PHONE</label>
+                  <input
+                    type="text"
+                    value={project.keyPersonContact?.phone || ''}
+                    onChange={(e) => updateProject(draft => { 
+                      if (!draft.keyPersonContact) draft.keyPersonContact = { name: '', phone: '', email: '' };
+                      draft.keyPersonContact.phone = e.target.value; 
+                    })}
+                    className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-850 focus:outline-none focus:border-slate-400"
+                    placeholder="+62 812-XXXX-XXXX"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-extrabold text-slate-400 block mb-1">KEY PERSON EMAIL</label>
+                  <input
+                    type="email"
+                    value={project.keyPersonContact?.email || ''}
+                    onChange={(e) => updateProject(draft => { 
+                      if (!draft.keyPersonContact) draft.keyPersonContact = { name: '', phone: '', email: '' };
+                      draft.keyPersonContact.email = e.target.value; 
+                    })}
+                    className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-850 focus:outline-none focus:border-slate-400"
+                    placeholder="dadang@kantor.com"
+                  />
                 </div>
               </div>
+            </div>
 
-              <div className="bg-white p-3 rounded-lg border border-slate-150 text-[11px] text-slate-500 mt-2">
-                <strong>Hint:</strong> Entering email information correctly enables sending contract drafts and initial outlines directly through the portal workflows in subsequent phases.
+            {/* Meta Information */}
+            <div className="col-span-1 md:col-span-2 bg-slate-50 border border-slate-100 rounded-xl p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">CREATION RECORD DATE</label>
+                <input
+                  type="date"
+                  value={project.createdAt}
+                  onChange={(e) => updateProject(draft => { draft.createdAt = e.target.value; })}
+                  className="w-full text-sm bg-white border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none"
+                />
               </div>
+              <div>
+                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">PROJECT CREATOR</label>
+                <div className="flex items-center gap-2 w-full text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-600 font-semibold select-none">
+                  <User size={14} className="text-slate-400" />
+                  <span>
+                    {(() => {
+                      const matchedCreator = availableTeam.find((u) => u.uid === project.ownerId || u.username === project.creatorUsername);
+                      return project.creatorName || (matchedCreator ? matchedCreator.displayName : null) || (project.ownerId === 'usr_admin' ? 'System Admin' : 'Active Colleague');
+                    })()}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">PROJECT REFERENCE ID</label>
+                <input
+                  type="text"
+                  disabled
+                  value={project.id}
+                  className="w-full text-sm bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="col-span-1 md:col-span-2 bg-emerald-500/5 p-3.5 rounded-xl border border-emerald-500/10 text-[11px] text-slate-550">
+              <strong>Hint:</strong> Setting up classification and Key Person profiles properly allows targeted email summaries and automated task matching based on project classifications (Internal or External scopes).
             </div>
           </div>
         )}
@@ -446,8 +507,36 @@ export default function PhaseDetailForm({
         {/* PHASE 2: PROSPECT */}
         {/* ======================================= */}
         {viewingPhaseIndex === 1 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4">
+          <div className="space-y-6">
+            {/* Horizontal sub-tabs for Prospect */}
+            <div className="flex border-b border-slate-200/60 pb-1.5 gap-4">
+              <button
+                type="button"
+                onClick={() => setProspectSubTab('visit')}
+                className={`pb-2 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  prospectSubTab === 'visit'
+                    ? 'border-slate-800 text-slate-900 border-b-slate-800'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                1. Initial Visit & Sales Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setProspectSubTab('requirements')}
+                className={`pb-2 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  prospectSubTab === 'requirements'
+                    ? 'border-slate-800 text-slate-900 border-b-slate-800'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                2. Project Briefing & Initial Specs
+              </button>
+            </div>
+
+            {prospectSubTab === 'visit' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-200">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 space-y-4">
               <h4 className="text-sm font-bold text-slate-700 flex items-center gap-1.5 border-b border-slate-200/60 pb-2">
                 <Calendar size={15} className="text-slate-400" />
                 Schedule Initial Meeting & Visit
@@ -806,371 +895,396 @@ export default function PhaseDetailForm({
               </div>
             </div>
           </div>
-        )}
+            ) : (
+              <div className="space-y-4 animate-in fade-in duration-200 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">BRIEF SESSION RECORD DATE</label>
+                    <input
+                      type="date"
+                      value={project.requirementBrief.briefDate}
+                      onChange={(e) => updateProject(draft => { draft.requirementBrief.briefDate = e.target.value; })}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
+                    />
+                  </div>
 
-        {/* ======================================= */}
-        {/* PHASE 3: REQUIREMENT BRIEF */}
-        {/* ======================================= */}
-        {viewingPhaseIndex === 2 && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">BRIEF SESSION RECORD DATE</label>
-                <input
-                  type="date"
-                  value={project.requirementBrief.briefDate}
-                  onChange={(e) => updateProject(draft => { draft.requirementBrief.briefDate = e.target.value; })}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"
-                />
-              </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">BOOK GENRE CATEGORY</label>
+                    <select
+                      value={project.requirementBrief.bookGenre}
+                      onChange={(e) => updateProject(draft => { draft.requirementBrief.bookGenre = e.target.value; })}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-800 font-semibold focus:outline-hidden"
+                    >
+                      {(() => {
+                        const list = [...(genreCategories.length > 0 ? genreCategories : DEFAULT_GENRES)];
+                        const activeVal = project.requirementBrief.bookGenre;
+                        if (activeVal && !list.some(g => g.name === activeVal)) {
+                          list.push({ id: 'active-temp-genre', name: activeVal });
+                        }
+                        return list.map(g => (
+                          <option key={g.id} value={g.name}>{g.name}</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
 
-              <div>
-                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">BOOK GENRE CATEGORY</label>
-                <select
-                  value={project.requirementBrief.bookGenre}
-                  onChange={(e) => updateProject(draft => { draft.requirementBrief.bookGenre = e.target.value; })}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-800 font-semibold focus:outline-hidden"
-                >
-                  {(() => {
-                    const list = [...(genreCategories.length > 0 ? genreCategories : DEFAULT_GENRES)];
-                    const activeVal = project.requirementBrief.bookGenre;
-                    if (activeVal && !list.some(g => g.name === activeVal)) {
-                      list.push({ id: 'active-temp-genre', name: activeVal });
-                    }
-                    return list.map(g => (
-                      <option key={g.id} value={g.name}>{g.name}</option>
-                    ));
-                  })()}
-                </select>
-              </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-slate-400 block mb-1">MARKET CATEGORY</label>
+                    <select
+                      value={project.requirementBrief.targetAudience}
+                      onChange={(e) => updateProject(draft => { draft.requirementBrief.targetAudience = e.target.value; })}
+                      className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-00 font-semibold focus:outline-hidden"
+                    >
+                      {(() => {
+                        const list = [...(marketCategories.length > 0 ? marketCategories : DEFAULT_MARKETS)];
+                        const activeVal = project.requirementBrief.targetAudience;
+                        if (activeVal && !list.some(m => m.name === activeVal)) {
+                          list.push({ id: 'active-temp-market', name: activeVal });
+                        }
+                        return list.map(m => (
+                          <option key={m.id} value={m.name}>{m.name}</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
+                </div>
 
-              <div>
-                <label className="text-[10px] font-extrabold text-slate-400 block mb-1">MARKET CATEGORY</label>
-                <select
-                  value={project.requirementBrief.targetAudience}
-                  onChange={(e) => updateProject(draft => { draft.requirementBrief.targetAudience = e.target.value; })}
-                  className="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer text-slate-800 font-semibold focus:outline-hidden"
-                >
-                  {(() => {
-                    const list = [...(marketCategories.length > 0 ? marketCategories : DEFAULT_MARKETS)];
-                    const activeVal = project.requirementBrief.targetAudience;
-                    if (activeVal && !list.some(m => m.name === activeVal)) {
-                      list.push({ id: 'active-temp-market', name: activeVal });
-                    }
-                    return list.map(m => (
-                      <option key={m.id} value={m.name}>{m.name}</option>
-                    ));
-                  })()}
-                </select>
-              </div>
-            </div>
+                {/* HISTORICAL CLIENT BRIEF LOGS Chronological Timeline */}
+                <div className="space-y-4 pt-2 border-t border-slate-200/40">
+                  <div>
+                    <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers size={13} className="text-slate-500" />
+                      Historical Client Brief Log ({project.requirementBrief.logs?.length || 0})
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-sans mt-0.5">
+                      Read and contribute detailed specification notes below. Every team member can participate.
+                    </p>
+                  </div>
 
-            {/* HISTORICAL CLIENT BRIEF LOGS Chronological Timeline */}
-            <div className="space-y-4 pt-2 border-t border-slate-200/40">
-              <div>
-                <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers size={13} className="text-slate-500" />
-                  Historical Client Brief Log ({project.requirementBrief.logs?.length || 0})
-                </h4>
-                <p className="text-[10px] text-slate-400 font-sans mt-0.5">
-                  Read and contribute detailed specification notes below. Every team member can participate.
-                </p>
-              </div>
-
-              {/* Timeline of Logs */}
-              <div className="space-y-3">
-                {(!project.requirementBrief.logs || project.requirementBrief.logs.length === 0) ? (
-                  <div className="p-4 bg-slate-50/60 border border-slate-200/50 rounded-xl text-center">
-                    <p className="text-xs text-slate-400 italic">No custom brief entries recorded yet.</p>
-                    {project.requirementBrief.briefNotes && (
-                      <div className="mt-2.5 p-3 bg-white border border-slate-200/80 rounded-lg text-left max-w-lg mx-auto">
-                        <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider">Initial Seeded Brief:</span>
-                        <p className="text-xs text-slate-600 mt-1 font-sans font-medium whitespace-pre-wrap">{project.requirementBrief.briefNotes}</p>
+                  {/* Timeline of Logs */}
+                  <div className="space-y-3">
+                    {(!project.requirementBrief.logs || project.requirementBrief.logs.length === 0) ? (
+                      <div className="p-4 bg-slate-50/60 border border-slate-200/50 rounded-xl text-center">
+                        <p className="text-xs text-slate-400 italic font-sans animate-pulse">No custom brief entries recorded yet.</p>
+                        {project.requirementBrief.briefNotes && (
+                          <div className="mt-2.5 p-3 bg-white border border-slate-200/80 rounded-lg text-left max-w-lg mx-auto">
+                            <span className="text-[9px] font-black uppercase text-amber-600 tracking-wider">Initial Seeded Brief:</span>
+                            <p className="text-xs text-slate-600 mt-1 font-sans font-medium whitespace-pre-wrap">{project.requirementBrief.briefNotes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="relative border-l-2 border-slate-200 pl-4 ml-2.5 py-1 space-y-4">
+                        {[...project.requirementBrief.logs]
+                          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                          .map((log) => {
+                            const initials = (log.authorName || 'Staff').charAt(0).toUpperCase();
+                          return (
+                            <div key={log.id} className="relative group animate-in fade-in slide-in-from-left-2 duration-200">
+                              {/* Bullet node */}
+                              <div className="absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-100" />
+                              
+                              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl shadow-xs hover:border-slate-350 transition-colors">
+                                <div className="flex items-start justify-between mb-1.5 gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-5 h-5 rounded bg-slate-900 border border-slate-250 text-white text-[9px] font-black flex items-center justify-center uppercase shrink-0">
+                                      {initials}
+                                    </div>
+                                    <div className="flex flex-col text-left">
+                                      <span className="text-[11px] font-black text-slate-755 leading-none">{log.authorName}</span>
+                                      {log.authorUsername && (
+                                        <span className="text-[8px] font-bold text-slate-400 mt-0.5 uppercase font-mono tracking-wider leading-none">
+                                          @{log.authorUsername}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 text-[9px] font-semibold text-slate-400">
+                                    <div className="flex items-center gap-1">
+                                      <Clock size={10} />
+                                      <span>
+                                        {new Date(log.timestamp).toLocaleDateString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </span>
+                                    </div>
+                                    {userProfile?.role === 'admin' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (window.confirm("Are you sure you want to permanently delete this requirement log?")) {
+                                            updateProject((draft) => {
+                                              draft.requirementBrief.logs = (draft.requirementBrief.logs || []).filter(item => item.id !== log.id);
+                                            });
+                                          }
+                                        }}
+                                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition-all cursor-pointer"
+                                        title="Delete this history brief log"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-xs text-slate-705 leading-relaxed font-sans whitespace-pre-wrap font-medium select-text text-left">
+                                  {log.notes}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="relative border-l-2 border-slate-200 pl-4 ml-2.5 py-1 space-y-4">
-                    {[...project.requirementBrief.logs]
-                      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                      .map((log) => {
-                        const initials = (log.authorName || 'Staff').charAt(0).toUpperCase();
-                      return (
-                        <div key={log.id} className="relative group animate-in fade-in slide-in-from-left-2 duration-200">
-                          {/* Bullet node */}
-                          <div className="absolute -left-[23px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white ring-2 ring-emerald-100" />
-                          
-                          <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl shadow-xs hover:border-slate-350 transition-colors">
-                            <div className="flex items-start justify-between mb-1.5 gap-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded bg-slate-900 border border-slate-250 text-white text-[9px] font-black flex items-center justify-center uppercase shrink-0">
-                                  {initials}
-                                </div>
-                                <div className="flex flex-col text-left">
-                                  <span className="text-[11px] font-black text-slate-755 leading-none">{log.authorName}</span>
-                                  {log.authorUsername && (
-                                    <span className="text-[8px] font-bold text-slate-400 mt-0.5 uppercase font-mono tracking-wider leading-none">
-                                      @{log.authorUsername}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-2 text-[9px] font-semibold text-slate-400">
-                                <div className="flex items-center gap-1">
-                                  <Clock size={10} />
-                                  <span>
-                                    {new Date(log.timestamp).toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                </div>
-                                {userProfile?.role === 'admin' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (window.confirm("Are you sure you want to permanently delete this requirement log?")) {
-                                        updateProject((draft) => {
-                                          draft.requirementBrief.logs = (draft.requirementBrief.logs || []).filter(item => item.id !== log.id);
-                                        });
-                                      }
-                                    }}
-                                    className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition-all cursor-pointer"
-                                    title="Delete this history brief log"
-                                  >
-                                    <Trash2 size={11} />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-xs text-slate-705 leading-relaxed font-sans whitespace-pre-wrap font-medium select-text text-left">
-                              {log.notes}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
 
-              {/* Add brief log tool */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
-                    Contribute Received Client Brief Notes
-                  </label>
-                </div>
-                
-                <div className="space-y-2">
-                  <textarea
-                    rows={3}
-                    value={newBriefLog}
-                    onChange={(e) => setNewBriefLog(e.target.value)}
-                    className="w-full text-xs bg-white border border-slate-200 focus:border-slate-400 rounded-xl px-3 py-2.5 text-slate-800 placeholder-slate-450 outline-none transition-colors"
-                    placeholder="Write key guidelines, book requirements, page layouts or cover constraints here... Each author briefing session is tracked in this cumulative registry."
-                  />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="text-[9px] text-slate-400 font-sans">
-                      Logging as <strong className="text-slate-600">{userProfile?.displayName || userProfile?.username || 'Active Colleague'}</strong>
+                  {/* Add brief log tool */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      <label className="text-[10px] font-extrabold text-slate-500 uppercase tracking-widest block">
+                        Contribute Received Client Brief Notes
+                      </label>
                     </div>
                     
+                    <div className="space-y-2">
+                      <textarea
+                        rows={3}
+                        value={newBriefLog}
+                        onChange={(e) => setNewBriefLog(e.target.value)}
+                        className="w-full text-xs bg-white border border-slate-200 focus:border-slate-400 rounded-xl px-3 py-2.5 text-slate-800 placeholder-slate-450 outline-none transition-colors"
+                        placeholder="Write key guidelines, book requirements, page layouts or cover constraints here... Each author briefing session is tracked in this cumulative registry."
+                      />
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="text-[9px] text-slate-400 font-sans">
+                          Logging as <strong className="text-slate-600">{userProfile?.displayName || userProfile?.username || 'Active Colleague'}</strong>
+                        </div>
+                        
+                        <button
+                          type="button"
+                          disabled={!newBriefLog.trim()}
+                          onClick={() => {
+                            if (!newBriefLog.trim()) return;
+                            updateProject((draft) => {
+                              if (!draft.requirementBrief.logs) {
+                                draft.requirementBrief.logs = [];
+                              }
+                              const freshLog = {
+                                id: 'brief-' + Date.now(),
+                                notes: newBriefLog.trim(),
+                                timestamp: new Date().toISOString(),
+                                authorName: userProfile?.displayName || userProfile?.username || 'Active Colleague',
+                                authorUsername: userProfile?.username || 'unknown'
+                              };
+                              draft.requirementBrief.logs.push(freshLog);
+                              
+                              // Sync consolidated briefNotes if they're empty or prepend nicely
+                              if (!draft.requirementBrief.briefNotes || draft.requirementBrief.briefNotes.startsWith("Initial requirement log")) {
+                                draft.requirementBrief.briefNotes = freshLog.notes;
+                              } else {
+                                // Prepend nicely to main summary
+                                draft.requirementBrief.briefNotes = `${freshLog.notes}\n\n---\n${draft.requirementBrief.briefNotes}`;
+                              }
+                            });
+                            setNewBriefLog('');
+                          }}
+                          className={`flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer ${
+                            newBriefLog.trim()
+                              ? 'bg-slate-900 border border-slate-900 text-white hover:bg-slate-800'
+                              : 'bg-slate-200 border border-slate-200 text-slate-400 cursor-not-allowed'
+                          }`}
+                        >
+                          <Plus size={12} />
+                          Add Brief Log Entry
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BRIEF DOCUMENTS EXTERNAL LINKS */}
+                <div className="space-y-2 border-t border-slate-200/60 pt-4 font-sans">
+                  <label className="text-xs font-bold text-slate-505 block uppercase tracking-wider">
+                    Requirement Brief Documents
+                  </label>
+
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Google Drive Brief folder"
+                          value={newBriefDocName}
+                          onChange={e => setNewBriefDocName(e.target.value)}
+                          className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
+                        <input
+                          type="text"
+                          placeholder="https://drive.google.com/..."
+                          value={newBriefDocLink}
+                          onChange={e => setNewBriefDocLink(e.target.value)}
+                          className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
+                        />
+                      </div>
+                    </div>
                     <button
                       type="button"
-                      disabled={!newBriefLog.trim()}
-                      onClick={() => {
-                        if (!newBriefLog.trim()) return;
-                        updateProject((draft) => {
-                          if (!draft.requirementBrief.logs) {
-                            draft.requirementBrief.logs = [];
-                          }
-                          const freshLog = {
-                            id: 'brief-' + Date.now(),
-                            notes: newBriefLog.trim(),
-                            timestamp: new Date().toISOString(),
-                            authorName: userProfile?.displayName || userProfile?.username || 'Active Colleague',
-                            authorUsername: userProfile?.username || 'unknown'
-                          };
-                          draft.requirementBrief.logs.push(freshLog);
-                          
-                          // Sync consolidated briefNotes if they're empty or prepend nicely
-                          if (!draft.requirementBrief.briefNotes || draft.requirementBrief.briefNotes.startsWith("Initial requirement log")) {
-                            draft.requirementBrief.briefNotes = freshLog.notes;
-                          } else {
-                            // Prepend nicely to main summary
-                            draft.requirementBrief.briefNotes = `${freshLog.notes}\n\n---\n${draft.requirementBrief.briefNotes}`;
-                          }
-                        });
-                        setNewBriefLog('');
-                      }}
-                      className={`flex items-center gap-1 px-3.5 py-1.5 rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer ${
-                        newBriefLog.trim()
-                          ? 'bg-slate-900 border border-slate-900 text-white hover:bg-slate-800'
-                          : 'bg-slate-200 border border-slate-200 text-slate-400 cursor-not-allowed'
+                      onClick={handleAddBriefDocLink}
+                      disabled={!newBriefDocLink.trim()}
+                      className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        newBriefDocLink.trim()
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                          : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                       }`}
                     >
                       <Plus size={12} />
-                      Add Brief Log Entry
+                      Add Brief Document External Link
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* BRIEF DOCUMENTS EXTERNAL LINKS */}
-            <div className="space-y-2 border-t border-slate-200/60 pt-4">
-              <label className="text-xs font-bold text-slate-500 block uppercase tracking-wider">
-                Requirement Brief Documents
-              </label>
-
-              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">Document Name / Label</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Google Drive Brief folder"
-                      value={newBriefDocName}
-                      onChange={e => setNewBriefDocName(e.target.value)}
-                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-extrabold text-slate-400 uppercase block mb-1">External Link URL *</label>
-                    <input
-                      type="text"
-                      placeholder="https://drive.google.com/..."
-                      value={newBriefDocLink}
-                      onChange={e => setNewBriefDocLink(e.target.value)}
-                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-800 focus:bg-white outline-none"
-                    />
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddBriefDocLink}
-                  disabled={!newBriefDocLink.trim()}
-                  className={`w-full py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                    newBriefDocLink.trim()
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                      : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  <Plus size={12} />
-                  Add Brief Document External Link
-                </button>
-              </div>
-
-              {/* Saved Documents List */}
-              {project.requirementBrief.documents && project.requirementBrief.documents.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
-                  {project.requirementBrief.documents.map((doc, idx) => (
-                    <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
-                      <div className="flex items-center gap-2.5 truncate">
-                        <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 font-bold shrink-0">
-                          <Link size={16} />
-                        </div>
-                        <div className="truncate text-left">
-                          <p className="text-xs font-bold text-slate-850 truncate" title={doc.name}>
-                            {doc.name}
-                          </p>
-                          <p className="text-[9px] text-slate-400">
-                            {doc.uploadedBy ? (
-                              <span>
-                                Added by <span className="font-semibold text-emerald-700">{doc.uploadedBy}</span>
-                                {doc.uploadedAt && (
-                                  <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
-                                    on {new Date(doc.uploadedAt).toLocaleString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
+                  {/* Saved Documents List */}
+                  {project.requirementBrief.documents && project.requirementBrief.documents.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                      {project.requirementBrief.documents.map((doc, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3 shadow-2xs">
+                          <div className="flex items-center gap-2.5 truncate">
+                            <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600 font-bold shrink-0">
+                              <Link size={16} />
+                            </div>
+                            <div className="truncate text-left font-sans">
+                              <p className="text-xs font-bold text-slate-850 truncate" title={doc.name}>
+                                {doc.name}
+                              </p>
+                              <p className="text-[9px] text-slate-400">
+                                {doc.uploadedBy ? (
+                                  <span>
+                                    Added by <span className="font-semibold text-emerald-700">{doc.uploadedBy}</span>
+                                    {doc.uploadedAt && (
+                                      <span className="text-[8px] font-mono ml-1 font-normal block sm:inline">
+                                        on {new Date(doc.uploadedAt).toLocaleString('en-US', {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </span>
+                                    )}
                                   </span>
+                                ) : (
+                                  "Seeded Document"
                                 )}
-                              </span>
-                            ) : (
-                              "Seeded Document"
-                            )}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {confirmDeleteBriefDocIndex === idx ? (
-                          <div className="flex items-center gap-1 bg-red-50 border border-red-100 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-150">
-                            <span className="text-[9px] font-bold text-red-700 px-1">Are you sure?</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                updateProject(draft => {
-                                  if (draft.requirementBrief.documents) {
-                                    draft.requirementBrief.documents.splice(idx, 1);
-                                  }
-                                });
-                                setConfirmDeleteBriefDocIndex(null);
-                              }}
-                              className="px-2 py-0.5 text-[8px] font-black text-white bg-red-600 hover:bg-red-700 rounded transition-all shadow-xs shrink-0 cursor-pointer"
-                            >
-                              Delete
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteBriefDocIndex(null)}
-                              className="px-2 py-0.5 text-[8px] font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-all shrink-0 cursor-pointer"
-                            >
-                              No
-                            </button>
+                              </p>
+                            </div>
                           </div>
-                        ) : (
-                          <>
-                            {doc.data && (
-                              <a
-                                href={doc.data}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
-                              >
-                                <ExternalLink size={10} />
-                                Open Link
-                              </a>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteBriefDocIndex(idx)}
-                              className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
-                              title="Delete requirement brief file"
-                            >
-                              Remove
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
-              <Sparkles className="text-amber-600 mt-0.5 shrink-0" size={16} />
-              <div>
-                <strong>Milestone Creative Suggestion:</strong> For <em>{project.requirementBrief.bookGenre}</em> books targeting <em>{project.requirementBrief.targetAudience || 'mass markets'}</em>, we highly recommend focusing on detailed chapter headers and considering a 120gsm matte text stock paper rather than basic cream pulp to elevate overall typography readability.
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {confirmDeleteBriefDocIndex === idx ? (
+                              <div className="flex items-center gap-1 bg-red-50 border border-red-100 rounded-lg p-1 animate-in fade-in zoom-in-95 duration-150 font-sans">
+                                <span className="text-[9px] font-bold text-red-700 px-1">Are you sure?</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateProject(draft => {
+                                      if (draft.requirementBrief.documents) {
+                                        draft.requirementBrief.documents.splice(idx, 1);
+                                      }
+                                    });
+                                    setConfirmDeleteBriefDocIndex(null);
+                                  }}
+                                  className="px-2 py-0.5 text-[8px] font-black text-white bg-red-600 hover:bg-red-700 rounded transition-all shadow-xs shrink-0 cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteBriefDocIndex(null)}
+                                  className="px-2 py-0.5 text-[8px] font-bold text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded transition-all shrink-0 cursor-pointer"
+                                >
+                                  No
+                                </button>
+                              </div>
+                            ) : (
+                              <>
+                                {doc.data && (
+                                  <a
+                                    href={doc.data}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2 py-1 text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition-all flex items-center gap-1"
+                                  >
+                                    <ExternalLink size={10} />
+                                    Open Link
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteBriefDocIndex(idx)}
+                                  className="p-1 px-1.5 text-[10px] font-semibold text-red-500 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
+                                  title="Delete requirement brief file"
+                                >
+                                  Remove
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5 font-sans">
+                  <Sparkles className="text-amber-600 mt-0.5 shrink-0" size={16} />
+                  <div>
+                    <strong>Milestone Creative Suggestion:</strong> For <em>{project.requirementBrief.bookGenre}</em> books targeting <em>{project.requirementBrief.targetAudience || 'mass markets'}</em>, we highly recommend focusing on detailed chapter headers and considering a 120gsm matte text stock paper rather than basic cream pulp to elevate overall typography readability.
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
         {/* ======================================= */}
-        {/* PHASE 4: CREATIVE BRIEF */}
+        {/* PHASE 3: PROPOSAL & SERVICE COSTING (MERGED CREATIVE BRIEF & PUBLISHING PROPOSAL) */}
         {/* ======================================= */}
-        {viewingPhaseIndex === 3 && (
+        {viewingPhaseIndex === 2 && (
           <div className="space-y-6">
+            {/* Horizontal sub-tabs for Proposal */}
+            <div className="flex border-b border-slate-200/60 pb-1.5 gap-4">
+              <button
+                type="button"
+                onClick={() => setProposalSubTab('creative')}
+                className={`pb-2 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  proposalSubTab === 'creative'
+                    ? 'border-slate-800 text-slate-900 border-b-slate-800'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                1. Creative Concept & Aesthetics
+              </button>
+              <button
+                type="button"
+                onClick={() => setProposalSubTab('costing')}
+                className={`pb-2 text-xs font-black uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  proposalSubTab === 'costing'
+                    ? 'border-slate-800 text-slate-900 border-b-slate-800'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                2. Publishing Service Costing
+              </button>
+            </div>
+
+            {proposalSubTab === 'creative' ? (
+              <div className="space-y-6 animate-in fade-in duration-200 text-left">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-500 block mb-1">PROPOSED BOOK TITLE</label>
@@ -1542,13 +1656,8 @@ export default function PhaseDetailForm({
               </div>
             </div>
           </div>
-        )}
-
-        {/* ======================================= */}
-        {/* PHASE 5: PROPOSAL */}
-        {/* ======================================= */}
-        {viewingPhaseIndex === 4 && (
-          <div className="space-y-6">
+        ) : (
+              <div className="space-y-6 animate-in fade-in duration-200 text-left">
             
             {/* Header info */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -1879,11 +1988,13 @@ export default function PhaseDetailForm({
 
           </div>
         )}
+      </div>
+    )}
 
         {/* ======================================= */}
-        {/* PHASE 6: CLOSING */}
+        {/* PHASE 4: CLOSING & CONTRACTING */}
         {/* ======================================= */}
-        {viewingPhaseIndex === 5 && (
+        {viewingPhaseIndex === 3 && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
@@ -2332,9 +2443,9 @@ export default function PhaseDetailForm({
         )}
 
         {/* ======================================= */}
-        {/* PHASE 7: PRE-PRODUCTION */}
+        {/* PHASE 5: PRE-PRODUCTION & ASSIGNMENTS */}
         {/* ======================================= */}
-        {viewingPhaseIndex === 6 && (
+        {viewingPhaseIndex === 4 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Step 7.1: Outline Chapters List */}
@@ -3052,9 +3163,9 @@ export default function PhaseDetailForm({
         )}
 
         {/* ======================================= */}
-        {/* PHASE 8: PRODUCTION */}
+        {/* PHASE 6: PRODUCTION & ITERATIONS */}
         {/* ======================================= */}
-        {viewingPhaseIndex === 7 && (
+        {viewingPhaseIndex === 5 && (
           <div className="space-y-6">
             
             {/* Quick stats and word counts */}
@@ -3410,9 +3521,9 @@ export default function PhaseDetailForm({
         )}
 
         {/* ======================================= */}
-        {/* PHASE 9: PRINTING */}
+        {/* PHASE 7: PRINTING & PRESS RUN */}
         {/* ======================================= */}
-        {viewingPhaseIndex === 8 && (
+        {viewingPhaseIndex === 6 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             {/* Steps & Revision lists */}
@@ -3576,9 +3687,9 @@ export default function PhaseDetailForm({
         )}
 
         {/* ======================================= */}
-        {/* PHASE 10: FINAL ARTWORK & TROPHY */}
+        {/* PHASE 8: FINAL ARTWORK DELIVERY */}
         {/* ======================================= */}
-        {viewingPhaseIndex === 9 && (
+        {viewingPhaseIndex === 7 && (
           <div className="space-y-6">
             
             {/* Step 1: Send softcopy and download link */}

@@ -8,17 +8,17 @@ interface LogoProps {
 }
 
 export default function Logo({ className = '', size = 'md' }: LogoProps) {
-  // Determine scales based on size prop
+  // Determine scales based on size prop (150% bigger)
   const imgSizes = {
-    sm: 'h-[30px] w-auto',
-    md: 'h-[42px] w-auto',
-    lg: 'h-[60px] w-auto'
+    sm: 'h-[45px] w-auto',
+    md: 'h-[63px] w-auto',
+    lg: 'h-[90px] w-auto'
   };
 
   const badgeSizes = {
-    sm: 'w-[30px] h-[30px] text-[15px]',
-    md: 'w-[36px] h-[36px] text-[18px]',
-    lg: 'w-[48px] h-[48px] text-[22px]'
+    sm: 'w-[45px] h-[45px] text-[22px]',
+    md: 'w-[54px] h-[54px] text-[27px]',
+    lg: 'w-[72px] h-[72px] text-[33px]'
   };
 
   // We can track error state locally to handle fallback rendering without direct DOM queries

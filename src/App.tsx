@@ -160,6 +160,10 @@ export default function App() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientEmail, setNewClientEmail] = useState('');
+  const [newProjectTypeSelection, setNewProjectTypeSelection] = useState<'Internal' | 'B to C' | 'B to B'>('Internal');
+  const [newKeyPersonName, setNewKeyPersonName] = useState('');
+  const [newKeyPersonPhone, setNewKeyPersonPhone] = useState('');
+  const [newKeyPersonEmail, setNewKeyPersonEmail] = useState('');
   const [newProjectGenre, setNewProjectGenre] = useState('Historical Fiction');
 
   // Handle switching in/out of sandbox (No-op in production database mode)
@@ -938,6 +942,12 @@ export default function App() {
       projectName: newProjectName.trim(),
       createdAt: new Date().toISOString().split('T')[0],
       currentPhaseIndex: 0, // Starts at phase 1 (index 0)
+      projectTypeSelection: newProjectTypeSelection,
+      keyPersonContact: {
+        name: newKeyPersonName.trim(),
+        phone: newKeyPersonPhone.trim(),
+        email: newKeyPersonEmail.trim()
+      },
       clientContact: {
         name: newClientName.trim(),
         phone: newClientPhone.trim() || '+62 811-1111-2222',
@@ -1032,6 +1042,18 @@ export default function App() {
       }
     };
 
+    const resetOnboardForm = () => {
+      setNewProjectName('');
+      setNewClientName('');
+      setNewClientPhone('');
+      setNewClientEmail('');
+      setNewProjectTypeSelection('Internal');
+      setNewKeyPersonName('');
+      setNewKeyPersonPhone('');
+      setNewKeyPersonEmail('');
+      setShowCreateForm(false);
+    };
+
     if (firestoreOffline) {
       setProjects(prev => {
         const next = [newProject, ...prev];
@@ -1040,13 +1062,7 @@ export default function App() {
       });
       setSelectedProjectId(pid);
       setViewingPhaseIndex(0);
-
-      // Reset Form Input Toggles
-      setNewProjectName('');
-      setNewClientName('');
-      setNewClientPhone('');
-      setNewClientEmail('');
-      setShowCreateForm(false);
+      resetOnboardForm();
       return;
     }
 
@@ -1055,13 +1071,7 @@ export default function App() {
       await setDoc(doc(db, 'projects', pid), cleaned);
       setSelectedProjectId(pid);
       setViewingPhaseIndex(0);
-
-      // Reset Form Input Toggles
-      setNewProjectName('');
-      setNewClientName('');
-      setNewClientPhone('');
-      setNewClientEmail('');
-      setShowCreateForm(false);
+      resetOnboardForm();
     } catch (err) {
       console.warn("Could not create project online, writing to local storage:", err);
       setFirestoreOffline(true);
@@ -1072,13 +1082,7 @@ export default function App() {
       });
       setSelectedProjectId(pid);
       setViewingPhaseIndex(0);
-
-      // Reset Form Input Toggles
-      setNewProjectName('');
-      setNewClientName('');
-      setNewClientPhone('');
-      setNewClientEmail('');
-      setShowCreateForm(false);
+      resetOnboardForm();
     }
   };
 
@@ -1283,7 +1287,7 @@ export default function App() {
                 className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer"
               >
                 <Plus size={14} />
-                New Book Project
+                New Project Idea
               </button>
             )}
 
@@ -1931,13 +1935,13 @@ export default function App() {
                       ) : (
                         <div className="space-y-4">
                           <div className="border-b border-slate-100 pb-2">
-                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Book Project Draft</h4>
-                            <p className="text-[10px] text-slate-500 font-medium">Instantiate a complete corporate project track record inside database.</p>
+                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Project Idea Draft</h4>
+                            <p className="text-[10px] text-slate-500 font-medium font-sans">Instantiate a complete corporate project track record inside database.</p>
                           </div>
 
                           <div className="space-y-3">
                             <p className="text-[10.5px] text-slate-550 leading-relaxed font-sans">
-                              Admins can click on <span className="font-extrabold text-[#0c6b54]">"New Book Project"</span> directly in the top navbar header. It will launch our dynamic Phase-1 wizard with full template blueprints preloaded automatically.
+                              Admins can click on <span className="font-extrabold text-[#0c6b54]">"New Project Idea"</span> directly in the top navbar header. It will launch our dynamic Phase-1 wizard with full template blueprints preloaded automatically.
                             </p>
                             <button
                               onClick={() => {
@@ -2432,7 +2436,7 @@ export default function App() {
                     <BookOpen size={16} />
                   </div>
                   <h3 className="text-lg font-display font-extrabold text-slate-800">
-                    Register New Book Production Draft
+                    Register New Project Idea Draft
                   </h3>
                 </div>
                 <button
@@ -2444,72 +2448,130 @@ export default function App() {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateProject} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">BOOK PROJECT WORKING TITLE</label>
-                  <input
-                    type="text"
-                    required
-                    value={newProjectName}
-                    onChange={e => setNewProjectName(e.target.value)}
-                    placeholder="e.g. Chronicles of the Sea"
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
-                  />
+              <form onSubmit={handleCreateProject} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 block mb-1">PROJECT WORKING TITLE / IDEA</label>
+                    <input
+                      type="text"
+                      required
+                      value={newProjectName}
+                      onChange={e => setNewProjectName(e.target.value)}
+                      placeholder="e.g. Chronicles of Indonesia"
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 block mb-1">PROJECT CLASSIFICATION</label>
+                    <select
+                      value={newProjectTypeSelection}
+                      onChange={e => setNewProjectTypeSelection(e.target.value as any)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 cursor-pointer focus:outline-hidden"
+                    >
+                      <option value="Internal">Internal</option>
+                      <option value="B to C">B to C (to Person/Individual)</option>
+                      <option value="B to B">B to B (to Corporate/Commercial)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 block mb-1">GENRE CATEGORY</label>
+                    <select
+                      value={newProjectGenre}
+                      onChange={e => setNewProjectGenre(e.target.value)}
+                      className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 cursor-pointer focus:outline-hidden"
+                    >
+                      {genreCategories.map(genre => (
+                        <option key={genre.id} value={genre.name}>{genre.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">CLIENT STAKEHOLDER NAME</label>
-                  <input
-                    type="text"
-                    required
-                    value={newClientName}
-                    onChange={e => setNewClientName(e.target.value)}
-                    placeholder="e.g. Jane Doe"
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
-                  />
+                <div className="border-t border-slate-100 pt-3">
+                  <span className="text-xs font-black text-slate-700 block uppercase mb-2 tracking-wider">Client Stakeholder Contact</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 block mb-1">CLIENT STAKEHOLDER NAME</label>
+                      <input
+                        type="text"
+                        required
+                        value={newClientName}
+                        onChange={e => setNewClientName(e.target.value)}
+                        placeholder="e.g. Jane Doe"
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 block mb-1">CLIENT PHONE NUMBER</label>
+                      <input
+                        type="text"
+                        value={newClientPhone}
+                        onChange={e => setNewClientPhone(e.target.value)}
+                        placeholder="+62 811..."
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 block mb-1">CLIENT EMAIL ADDRESS</label>
+                      <input
+                        type="email"
+                        value={newClientEmail}
+                        onChange={e => setNewClientEmail(e.target.value)}
+                        placeholder="client@mail.com"
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">GENRE CATEGORY</label>
-                  <select
-                    value={newProjectGenre}
-                    onChange={e => setNewProjectGenre(e.target.value)}
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5 cursor-pointer focus:outline-hidden"
-                  >
-                    {genreCategories.map(genre => (
-                      <option key={genre.id} value={genre.name}>{genre.name}</option>
-                    ))}
-                  </select>
+                <div className="border-t border-slate-100 pt-3">
+                  <span className="text-xs font-black text-slate-700 block uppercase mb-2 tracking-wider">Key Person Contact Info</span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 block mb-1">KEY PERSON NAME</label>
+                      <input
+                        type="text"
+                        value={newKeyPersonName}
+                        onChange={e => setNewKeyPersonName(e.target.value)}
+                        placeholder="e.g. Michael Scott"
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 block mb-1">KEY PERSON PHONE</label>
+                      <input
+                        type="text"
+                        value={newKeyPersonPhone}
+                        onChange={e => setNewKeyPersonPhone(e.target.value)}
+                        placeholder="+62 812..."
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 block mb-1">KEY PERSON EMAIL</label>
+                      <input
+                        type="email"
+                        value={newKeyPersonEmail}
+                        onChange={e => setNewKeyPersonEmail(e.target.value)}
+                        placeholder="michael@company.com"
+                        className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">CLIENT PHONE NUMBER</label>
-                  <input
-                    type="text"
-                    value={newClientPhone}
-                    onChange={e => setNewClientPhone(e.target.value)}
-                    placeholder="+62 811..."
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">CLIENT EMAIL ADDRESS</label>
-                  <input
-                    type="email"
-                    value={newClientEmail}
-                    onChange={e => setNewClientEmail(e.target.value)}
-                    placeholder="client@mail.com"
-                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg p-2.5"
-                  />
-                </div>
-
-                <div className="flex items-end justify-end">
+                <div className="flex items-center justify-end border-t border-slate-100 pt-4">
                   <button
                     type="submit"
-                    className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-lg shadow-sm transition-all"
+                    className="bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs py-2.5 px-6 rounded-lg shadow-sm transition-all cursor-pointer"
                   >
-                    ✓ Create Book Project draft
+                    ✓ Create Project Idea draft
                   </button>
                 </div>
               </form>
@@ -2533,7 +2595,7 @@ export default function App() {
           </div>
 
           {/* Stepped Columns */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2.5 select-none overflow-x-auto pb-1">
+          <div className="flex xl:grid xl:grid-cols-8 gap-3 overflow-x-auto pb-2 select-none">
             {PHASE_NAMES.map((name, index) => {
               // Elements currently on this step
               const booksOnThisStep = projects.filter(p => p.currentPhaseIndex === index);
@@ -2541,16 +2603,16 @@ export default function App() {
               return (
                 <div 
                   key={index} 
-                  className="bg-slate-950/60 p-2.5.5 border border-slate-800 rounded-xl flex flex-col justify-between min-h-[90px]"
+                  className="bg-slate-950/60 p-3 border border-slate-800 rounded-xl flex flex-col justify-between min-h-[110px] w-[145px] sm:w-[165px] md:w-[185px] xl:w-auto xl:min-w-0 shrink-0 transition-all hover:border-slate-700 hover:bg-slate-900/80"
                 >
-                  <div className="mb-2 p-1.5">
+                  <div className="mb-2 p-1">
                     <div className="flex items-center justify-between gap-1 leading-none">
                       <span className="text-[10px] font-mono text-slate-500 font-extrabold">STEP {index + 1}</span>
-                      <span className="text-[11px] font-black text-amber-500 font-mono bg-amber-500/10 px-1 rounded">
+                      <span className="text-[11px] font-black text-amber-500 font-mono bg-amber-500/10 px-1.5 py-0.5 rounded">
                         {booksOnThisStep.length}
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold block text-slate-300 mt-1 truncate max-w-full" title={name}>
+                    <span className="text-[11px] font-semibold block text-slate-300 mt-1.5 truncate max-w-full" title={name}>
                       {name}
                     </span>
                   </div>
@@ -2824,10 +2886,10 @@ export default function App() {
               <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
                 <AlertCircle size={44} className="text-slate-300 mx-auto mb-4 animate-bounce" />
                 <h3 className="text-lg font-display font-extrabold text-slate-800">
-                  No Active Book Project Selected
+                  No Active Project Selected
                 </h3>
                 <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">
-                  Click on an existing project in the catalog on the left to start editing, or create a brand new draft using the "New Book Project" button above.
+                  Click on an existing project in the catalog on the left to start editing, or create a brand new draft using the "New Project Idea" button above.
                 </p>
                 
                 {userProfile?.role === 'admin' ? (
@@ -2837,11 +2899,11 @@ export default function App() {
                     className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-xl mt-6 inline-flex items-center gap-1.5 shadow-sm cursor-pointer"
                   >
                     <Plus size={14} />
-                    Initiate New Book Setup
+                    Initiate New Project Setup
                   </button>
                 ) : (
                   <p className="text-xs text-slate-400 mt-6 italic">
-                    Only system administrators can initiate new book projects. Select an existing project from the left catalog to start participating!
+                    Only system administrators can initiate new project ideas. Select an existing project from the left catalog to start participating!
                   </p>
                 )}
               </div>
@@ -3356,13 +3418,13 @@ export default function App() {
                       ) : (
                         <div className="space-y-4">
                           <div className="border-b border-slate-100 pb-2">
-                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Book Project Draft</h4>
+                            <h4 className="text-xs font-black text-slate-800 tracking-wider uppercase">Add New Project Idea Draft</h4>
                             <p className="text-[10px] text-slate-500 font-medium">Instantiate a complete corporate project track record inside database.</p>
                           </div>
 
                           <div className="space-y-3">
                             <p className="text-[10.5px] text-slate-550 leading-relaxed font-sans">
-                              Admins can click on <span className="font-extrabold text-[#0c6b54]">"New Book Project"</span> directly in the top navbar header. It will launch our dynamic Phase-1 wizard with full template blueprints preloaded automatically.
+                              Admins can click on <span className="font-extrabold text-[#0c6b54]">"New Project Idea"</span> directly in the top navbar header. It will launch our dynamic Phase-1 wizard with full template blueprints preloaded automatically.
                             </p>
                             <button
                               onClick={() => {

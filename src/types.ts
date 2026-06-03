@@ -230,6 +230,8 @@ export interface BookProject {
   clientContact: ProjectContact;
   currentPhaseIndex: number; // 0 to 9 representing Phases 1 to 10
   createdAt: string;
+  projectTypeSelection?: 'Internal' | 'B to C' | 'B to B';
+  keyPersonContact?: ProjectContact;
   
   // Phase 1 to 10 Data
   prospect: ProspectDetails;

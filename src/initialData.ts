@@ -18,7 +18,7 @@ export const INITIAL_PROJECTS: BookProject[] = [
     ownerId: '',
     projectName: 'The Whispering Pines',
     createdAt: '2026-05-01',
-    currentPhaseIndex: 8, // Phase 9: Printing
+    currentPhaseIndex: 6, // Phase 7: Printing
     clientContact: {
       name: 'Arthur Green',
       phone: '+62 811-2345-6789',
@@ -136,7 +136,7 @@ export const INITIAL_PROJECTS: BookProject[] = [
     ownerId: '',
     projectName: 'Java Advanced Architecture',
     createdAt: '2026-05-14',
-    currentPhaseIndex: 3, // Phase 4: Creative Brief
+    currentPhaseIndex: 2, // Phase 3: Proposal
     clientContact: {
       name: 'Dr. Linus Dev',
       phone: '+62 821-9988-7766',
@@ -233,7 +233,7 @@ export const INITIAL_PROJECTS: BookProject[] = [
     ownerId: '',
     projectName: 'Echoes of Eternity',
     createdAt: '2026-04-10',
-    currentPhaseIndex: 9, // Phase 10: Final Artwork
+    currentPhaseIndex: 7, // Phase 8: Final Artwork
     clientContact: {
       name: 'Clara Vance',
       phone: '+1-555-019-2834',
@@ -341,27 +341,23 @@ export const INITIAL_PROJECTS: BookProject[] = [
 ];
 
 export const PHASE_NAMES = [
-  'New Book Project',       // Index 0
+  'New Project Idea',       // Index 0
   'Prospect',               // Index 1
-  'Requirement Brief',      // Index 2
-  'Creative Brief',         // Index 3
-  'Proposal',               // Index 4
-  'Closing',                // Index 5
-  'Pre-Production',         // Index 6
-  'Production',             // Index 7
-  'Printing',               // Index 8
-  'Final Artwork'           // Index 9
+  'Proposal',               // Index 2
+  'Closing',                // Index 3
+  'Pre-Production',         // Index 4
+  'Production',             // Index 5
+  'Printing',               // Index 6
+  'Final Artwork'           // Index 7
 ];
 
 export const PHASE_COLORS = [
   { text: 'text-blue-600 bg-blue-50 border-blue-200', badge: 'bg-blue-100 text-blue-800' },
   { text: 'text-amber-600 bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-800' },
-  { text: 'text-teal-600 bg-teal-50 border-teal-200', badge: 'bg-teal-100 text-teal-800' },
   { text: 'text-violet-600 bg-violet-50 border-violet-200', badge: 'bg-violet-100 text-violet-800' },
   { text: 'text-cyan-600 bg-cyan-50 border-cyan-200', badge: 'bg-cyan-100 text-cyan-800' },
   { text: 'text-indigo-600 bg-indigo-50 border-indigo-200', badge: 'bg-indigo-100 text-indigo-800' },
   { text: 'text-fuchsia-600 bg-fuchsia-50 border-fuchsia-200', badge: 'bg-fuchsia-100 text-fuchsia-800' },
   { text: 'text-emerald-600 bg-emerald-50 border-emerald-200', badge: 'bg-emerald-100 text-emerald-800' },
-  { text: 'text-orange-600 bg-orange-50 border-orange-200', badge: 'bg-orange-100 text-orange-850' },
   { text: 'text-rose-600 bg-rose-50 border-rose-200', badge: 'bg-rose-100 text-rose-800' }
 ];

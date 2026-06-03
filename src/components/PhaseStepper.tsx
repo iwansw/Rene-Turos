@@ -25,7 +25,7 @@ export default function PhaseStepper({
             Production Stage Pipeline
           </h4>
           <p className="text-xs text-slate-500 mt-1">
-            Track and advance the project's official lifecycle across Milestone's 10 core phases.
+            Track and advance the project's official lifecycle across Milestone's 8 core phases.
           </p>
         </div>
 
@@ -38,14 +38,14 @@ export default function PhaseStepper({
         </div>
       </div>
 
-      {/* 10-Step Interactive Visual Rail */}
+      {/* 8-Step Interactive Visual Rail */}
       <div id="visual-timeline-rail" className="relative">
         
         {/* Horizontal connecting line behind keys */}
         <div className="absolute top-[22px] left-6 right-6 h-0.5 bg-slate-200 -z-0 hidden xl:block" />
 
         {/* Grid layout scrollable or wrapped */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 xl:grid-cols-10 gap-2.5 relative z-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5 relative z-10">
           {PHASE_NAMES.map((name, idx) => {
             const isOfficial = idx === currentPhaseIndex;
             const isCompleted = idx < currentPhaseIndex;
